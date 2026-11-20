@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { calendarioDoMes } from "@/lib/calendario";
-import { diagnosticar } from "@/lib/diagnostico";
+import { diagnosticar, opcoesDeSimulacao, simularDia } from "@/lib/diagnostico";
 import { EXEMPLO } from "@/lib/exemplo";
 import { brl } from "@/lib/formato";
+import { lembretesIcs } from "@/lib/lembretes";
 import { leituraGratuita, narrativaPadrao } from "@/lib/narrativa-padrao";
 import { criarReferencia, referenciaCombina, referenciaValida } from "@/lib/pedido";
 import type { Respostas } from "@/lib/tipos";
@@ -146,6 +147,33 @@ describe("diagnosticar", () => {
   });
 });
 
+describe("simulador do resultado", () => {
+  it("sem corte, repete o dia de hoje; com cortes, o dinheiro dura mais", () => {
+    const d = diagnosticar(respostas());
+    expect(simularDia(d, 0)).toBe(d.diaQueAcaba);
+    const opcoes = opcoesDeSimulacao(d);
+    expect(opcoes.map((o) => [o.id, o.corte])).toEqual([
+      ["comer_fora", 210],
+      ["compras_lazer", 140],
+      ["assinaturas", 50],
+    ]);
+    const todas = opcoes.reduce((s, o) => s + o.corte, 0);
+    // R$ 1.100 para o dia a dia, que passa a sair a R$ 40 por dia.
+    expect(simularDia(d, todas)).toBe(27);
+    expect(simularDia(d, 5000)).toBeNull();
+  });
+
+  it("com gasto invisível, parte do dia contado e oferece achar o que some", () => {
+    const d = diagnosticar(respostas({ quandoAcaba: "metade", gastos: { ...EXEMPLO.gastos, comer_fora: 150, compras_lazer: 100 } }));
+    expect(simularDia(d, 0)).toBe(15);
+    expect(opcoesDeSimulacao(d)[0]).toMatchObject({ id: "invisivel", corte: d.gastoInvisivel / 2 });
+    const metade = opcoesDeSimulacao(d)[0].corte;
+    // O gasto invisível sai até o dia contado: cortá-lo rende mais que cortar o mesmo valor espalhado pelo mês.
+    expect(simularDia(d, 0, metade)!).toBeGreaterThan(simularDia(d, metade)!);
+    expect(simularDia(d, 0, metade)!).toBeGreaterThan(15);
+  });
+});
+
 describe("narrativaPadrao e calendário", () => {
   it("escreve todas as partes do plano", () => {
     const r = respostas();
@@ -183,6 +211,22 @@ describe("narrativaPadrao e calendário", () => {
 
     const apertado = respostas({ rendaMensal: 2400 });
     expect(calendarioDoMes(apertado, diagnosticar(apertado)).some((m) => m.quando === "Enquanto o mês não fecha")).toBe(true);
+  });
+});
+
+describe("lembretes do plano", () => {
+  it("gera um .ics com o valor da semana, a conferência e o fechamento do mês", () => {
+    const d = diagnosticar(respostas());
+    // Quinta-feira, 19 de novembro de 2026.
+    const ics = lembretesIcs(d, new Date(2026, 10, 19, 12));
+    expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
+    expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(3);
+    expect(ics).toContain("DTSTART:20261123T080000"); // próxima segunda
+    expect(ics).toContain("DTSTART:20261122T190000"); // próximo domingo
+    expect(ics).toContain("DTSTART:20261128T100000"); // último sábado de novembro
+    expect(ics).toContain("RRULE:FREQ=MONTHLY;BYDAY=-1SA");
+    expect(ics.replace(/\r\n /g, "")).toContain(`Passar ${brl(d.livrePorSemana)} para o dia a dia`);
+    for (const linha of ics.split("\r\n")) expect(new TextEncoder().encode(linha).length).toBeLessThanOrEqual(75);
   });
 });
 

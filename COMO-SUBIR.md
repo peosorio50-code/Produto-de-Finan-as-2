@@ -119,6 +119,9 @@ aparecer. Confira também que o Fôlego continua no ar em
 - **Página de obrigado** (URL externa): `https://mesinteiro.folegofinanceiro.shop/plano`.
 - Confira o nome da loja que aparece no checkout (o mesmo cuidado do Fôlego).
 
+- **Imagens**: use `kit/kiwify/produto-1000x1000.png` como imagem do produto e
+  os dois banners de `kit/kiwify/` no checkout (computador e celular).
+
 O código do checkout é o trecho depois de `pay.kiwify.com.br/`. Vai em
 `KIWIFY_CHECKOUT` no `.env`.
 
@@ -180,7 +183,7 @@ regras), e o `mesinteiro-admin status` avisa.
 
 ---
 
-## 5. E-mail com o link do plano (opcional, mas recomendado)
+## 5. E-mail: link do plano e recuperação de venda (recomendado)
 
 Se o domínio `folegofinanceiro.shop` já foi verificado na Resend para o
 Fôlego, não precisa verificar de novo: o mesmo domínio manda e-mail com outro
@@ -189,14 +192,41 @@ nome de remetente.
 1. Use a chave da Resend do Fôlego ou crie uma nova, e cole no `.env`:
    - `RESEND_API_KEY=` a chave
    - `EMAIL_REMETENTE=Mês Inteiro <plano@folegofinanceiro.shop>`
-2. Reinicie o serviço. O `/api/saude` passa a mostrar `"email":true`.
+2. Reinicie o serviço. O `/api/saude` passa a mostrar `"email":true` e
+   `"recuperacao":true`.
+
+Com isso, liga também a **recuperação de venda**: quem faz o quiz e não compra
+recebe até 3 e-mails (1 h, 24 h e 72 h depois), mandados pelo cron de hora em
+hora que o instalador já deixou pronto. Para testar na hora, depois de fazer o
+quiz com o seu e-mail e esperar 1 hora:
+
+**VPS:**
+
+```bash
+mesinteiro-admin recuperar
+```
+
+Tem que responder `"enviados":1`. O link do e-mail abre o resultado em
+qualquer aparelho, e o "não quero mais receber" tira o e-mail da lista.
 
 Se o domínio ainda não foi verificado, siga o passo 5 do `COMO-SUBIR.md` do
 Fôlego (SPF, DKIM e DMARC no Cloudflare) e volte aqui.
 
 ---
 
-## 6. Testes antes de anunciar
+## 6. Pixel da Meta (opcional)
+
+1. No Gerenciador de Eventos da Meta, copie o número do pixel (só dígitos).
+2. Cole em `META_PIXEL_ID` no `/opt/mesinteiro/.env` e reinicie o serviço.
+3. Abra o site, faça o quiz e confira no Gerenciador de Eventos: `PageView`,
+   `Lead`, `CompleteRegistration`, `InitiateCheckout` e, depois de uma compra,
+   `Purchase`.
+
+Textos e regras dos anúncios: [kit/ANUNCIOS.md](kit/ANUNCIOS.md).
+
+---
+
+## 7. Testes antes de anunciar
 
 1. No celular, faça o quiz até o fim com o seu e-mail.
 2. Clique em comprar e pague de verdade com Pix (dá para pedir reembolso depois).
@@ -231,7 +261,7 @@ o segredo do endereço continua protegendo o webhook.
 
 ---
 
-## 7. Comparar os dois produtos
+## 8. Comparar os dois produtos
 
 Os dois funis gravam os mesmos eventos, com os mesmos nomes. Para comparar:
 
@@ -252,6 +282,11 @@ Os dois funis gravam os mesmos eventos, com os mesmos nomes. Para comparar:
    `quiz_concluido ÷ quiz_iniciado`, `checkout_iniciado ÷ quiz_concluido` e
    `compra_aprovada ÷ quiz_concluido`. O preço é o mesmo, então a venda por
    lead já diz qual produto rende mais.
+4. Atenção: o Mês Inteiro tem recuperação por e-mail, pixel e simulador no
+   resultado, e o Fôlego (ainda) não. Para comparar só o problema que cada um
+   resolve, leve essas melhorias para o Fôlego também, ou compare olhando só
+   as vendas de quem comprou sem passar pelos e-mails (`utm_source` diferente
+   de `email`).
 
 ---
 

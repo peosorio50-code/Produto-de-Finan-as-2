@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { CalendarioMes, EscalaNivel, FRASE_NIVEL, LinhasDiagnostico } from "@/components/Resumo";
 import { MARCA } from "@/lib/config";
+import { lembretesIcs } from "@/lib/lembretes";
 import { brl, dataExtenso, duracao, pct } from "@/lib/formato";
 import { AVISO_LEGAL, GUIA, type BlocoGuia } from "@/lib/guia";
 import type { Diagnostico, PlanoCompleto } from "@/lib/tipos";
@@ -65,6 +66,83 @@ function Potes({ d }: { d: Diagnostico }) {
         <p className="semanal__por">por semana</p>
         <p className="pequeno apoio">Para mercado, delivery, compras, lazer e o resto. Acabou, acabou até segunda.</p>
       </div>
+    </>
+  );
+}
+
+/** Baixa os lembretes do plano (.ics) para o calendário do celular. */
+function BotaoLembretes({ d }: { d: Diagnostico }) {
+  const [baixado, setBaixado] = useState(false);
+  return (
+    <div className="pilha nao-imprimir">
+      <button
+        type="button"
+        className="botao botao--contorno botao--compacto"
+        onClick={() => {
+          const arquivo = new Blob([lembretesIcs(d)], { type: "text/calendar;charset=utf-8" });
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(arquivo);
+          link.download = "mes-inteiro-lembretes.ics";
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+          setBaixado(true);
+        }}
+      >
+        Colocar os lembretes no meu calendário
+      </button>
+      <p className="pequeno apoio" role="status">
+        {baixado
+          ? "Abra o arquivo baixado e confirme: os lembretes entram no calendário do celular."
+          : `Toda segunda, o valor da semana (${brl(d.livrePorSemana)}); todo domingo, a conferência; e o fechamento do mês. Funciona com Google, Apple e Outlook.`}
+      </p>
+    </div>
+  );
+}
+
+/** Folha para imprimir (ou copiar num caderno) e acompanhar as semanas do mês. */
+function FolhaDeControle({ d }: { d: Diagnostico }) {
+  const valor = (id: Diagnostico["potes"][number]["id"]) => d.potes.find((p) => p.id === id)?.valor ?? 0;
+  const marcar = [
+    d.guardarPorMes > 0 ? `Separei o futuro no dia do pagamento (${brl(d.guardarPorMes)})` : "",
+    `Paguei as contas fixas (${brl(valor("contas"))})`,
+    d.parcelasMes > 0 ? `Paguei as parcelas (${brl(d.parcelasMes)}) e não fiz nenhuma nova` : "",
+    "Não usei o cartão de crédito no dia a dia",
+  ].filter(Boolean);
+  return (
+    <>
+      <div className="tabela-rolagem">
+        <table className="tabela folha-controle">
+          <thead>
+            <tr>
+              <th scope="col">Semana</th>
+              <th scope="col">Valor</th>
+              <th scope="col">Gastei</th>
+              <th scope="col">Sobrou</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <tr key={n}>
+                <td>Semana {n}</td>
+                <td>{brl(d.livrePorSemana)}</td>
+                <td className="folha-controle__escrever" aria-label="para preencher" />
+                <td className="folha-controle__escrever" aria-label="para preencher" />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <ul className="lista-caixas">
+        {marcar.map((item) => (
+          <li key={item}>{item}</li>
+        ))}
+      </ul>
+      <p className="pequeno apoio">
+        Alguns meses têm cinco segundas-feiras: na quinta semana, use o que sobrou das outras. Imprima esta
+        folha junto com o plano ou copie para um caderno.
+      </p>
     </>
   );
 }
@@ -304,6 +382,12 @@ export function PlanoDocumento({ plano }: { plano: PlanoCompleto }) {
             </li>
           ))}
         </ol>
+        <BotaoLembretes d={d} />
+      </section>
+
+      <section className="bloco">
+        <h2 className="titulo-2">Sua folha de controle</h2>
+        <FolhaDeControle d={d} />
       </section>
 
       <section className="bloco">

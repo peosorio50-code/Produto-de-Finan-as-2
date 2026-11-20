@@ -68,6 +68,32 @@ CREATE TABLE IF NOT EXISTS compras (
 );
 CREATE INDEX IF NOT EXISTS compras_por_ref ON compras (ref);
 CREATE INDEX IF NOT EXISTS compras_por_email ON compras (email);
+
+-- Respostas de quem terminou o quiz: abrem o resultado em qualquer aparelho
+-- (pelo link do e-mail) e alimentam os e-mails de recuperação.
+CREATE TABLE IF NOT EXISTS resultados (
+  token      TEXT PRIMARY KEY,
+  email      TEXT NOT NULL,
+  contato    TEXT NOT NULL,
+  respostas  TEXT NOT NULL,
+  origem     TEXT NOT NULL DEFAULT '{}',
+  criado_em  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS resultados_por_email ON resultados (email, criado_em);
+
+-- E-mails de recuperação já enviados: no máximo um de cada etapa por pessoa.
+CREATE TABLE IF NOT EXISTS envios (
+  email       TEXT NOT NULL,
+  etapa       TEXT NOT NULL,
+  token       TEXT,
+  enviado_em  TEXT NOT NULL,
+  PRIMARY KEY (email, etapa)
+);
+
+CREATE TABLE IF NOT EXISTS descadastros (
+  email  TEXT PRIMARY KEY,
+  em     TEXT NOT NULL
+);
 `;
 
 export function db(): DatabaseSync {

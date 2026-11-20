@@ -7,6 +7,7 @@
  *   mesinteiro-admin buscar EMAIL        pedidos, compras e link do plano de uma pessoa
  *   mesinteiro-admin liberar REF         libera um pedido à mão (quando o webhook falhou e você conferiu o pagamento na Kiwify)
  *   mesinteiro-admin backup          copia o banco para /opt/mesinteiro/backups (guarda 14)
+ *   mesinteiro-admin recuperar       manda agora os e-mails de recuperação devidos (o cron faz isso de hora em hora)
  *
  * Não precisa do programa sqlite3: usa o SQLite que vem dentro do Node.
  */
@@ -70,6 +71,29 @@ function status() {
       )
       .all(),
   );
+  console.log("\nE-mails de recuperação (todos os tempos)");
+  try {
+    tabela(
+      db
+        .prepare(
+          `SELECT e.etapa, COUNT(*) AS enviados,
+                  SUM(EXISTS (SELECT 1 FROM compras c WHERE c.email = e.email AND c.status = 'pago')
+                      OR EXISTS (SELECT 1 FROM pedidos p JOIN compras c ON c.ref = p.ref
+                                 WHERE p.email = e.email AND c.status = 'pago')) AS compraram_depois
+           FROM envios e GROUP BY e.etapa ORDER BY MIN(e.enviado_em)`,
+        )
+        .all(),
+    );
+    console.log(`  Descadastrados: ${um("SELECT COUNT(*) FROM descadastros")}`);
+    console.log(
+      `  Pedidos pagos vindos dos e-mails: ${um(
+        `SELECT COUNT(*) FROM pedidos p WHERE p.origem LIKE '%"utm_source":"email"%'
+           AND EXISTS (SELECT 1 FROM compras c WHERE c.ref = p.ref AND c.status = 'pago')`,
+      )}`,
+    );
+  } catch {
+    console.log("  (o site ainda não criou as tabelas: abra o site uma vez)");
+  }
   const padrao24h = um("SELECT COUNT(*) FROM pedidos WHERE plano_origem = 'padrao' AND gerado_em >= ?", desde(1));
   if (padrao24h > 0) {
     console.log(
@@ -84,7 +108,7 @@ function status() {
 function leads(dias = 30) {
   const linhas = db
     .prepare(
-      `SELECT l.*, EXISTS (SELECT 1 FROM compras c WHERE c.email = l.email AND c.status = 'pago')
+      `SELECT l.*, EXISTS (SELECT 1 FROM descadastros d WHERE d.email = l.email) AS descadastrado, EXISTS (SELECT 1 FROM compras c WHERE c.email = l.email AND c.status = 'pago')
               OR EXISTS (SELECT 1 FROM pedidos p JOIN compras c ON c.ref = p.ref
                          WHERE p.email = l.email AND c.status = 'pago') AS comprou
        FROM leads l WHERE l.atualizado_em >= ? ORDER BY l.criado_em`,
@@ -108,6 +132,7 @@ function leads(dias = 30) {
     "utm_source",
     "utm_campaign",
     "utm_content",
+    "descadastrado",
   ];
   const csv = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
   console.log(campos.join(","));
@@ -133,6 +158,7 @@ function leads(dias = 30) {
         o.utm_source,
         o.utm_campaign,
         o.utm_content,
+        l.descadastrado ? "sim" : "nao",
       ]
         .map(csv)
         .join(","),
@@ -183,4 +209,4 @@ function backup() {
 }
 
 const comandos = { status, leads: () => leads(arg), buscar: () => buscar(arg), liberar: () => liberar(arg), backup };
-(comandos[comando] ?? (() => console.log("Comandos: status | leads [dias] | buscar EMAIL | liberar REF | backup")))();
+(comandos[comando] ?? (() => console.log("Comandos: status | leads [dias] | buscar EMAIL | liberar REF | backup | recuperar")))();

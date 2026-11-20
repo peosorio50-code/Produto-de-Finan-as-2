@@ -110,7 +110,7 @@ const sobe = (valor: number, passo: number) => Math.ceil(valor / passo) * passo;
 const soma = (valores: number[]) => valores.reduce((a, b) => a + b, 0);
 
 /** Até que dia do mês o dinheiro cobre, se o dia a dia sai no mesmo ritmo todos os dias. null = cobre o mês inteiro. */
-function diaEmQueAcaba(disponivel: number, gastoPorDia: number): number | null {
+export function diaEmQueAcaba(disponivel: number, gastoPorDia: number): number | null {
   if (disponivel <= 0) return 1;
   if (gastoPorDia <= 0) return null;
   const dia = Math.floor(disponivel / gastoPorDia);
@@ -379,4 +379,46 @@ export function diagnosticar(r: Respostas): Diagnostico {
       parcelasAltas: parteParcelas > 0.2,
     },
   };
+}
+
+/* ---------- Simulações para o resultado gratuito ---------- */
+
+export interface OpcaoSimulacao {
+  id: string;
+  rotulo: string;
+  /** Quanto sai a menos por mês com essa mudança. */
+  corte: number;
+}
+
+/** Até três mudanças simples que a pessoa pode testar no resultado: os maiores vazamentos e o gasto invisível. */
+export function opcoesDeSimulacao(d: Diagnostico): OpcaoSimulacao[] {
+  const opcoes: OpcaoSimulacao[] = [];
+  if (d.gastoInvisivel > 0) {
+    opcoes.push({ id: "invisivel", rotulo: "Achar e cortar metade do gasto invisível", corte: desce(d.gastoInvisivel / 2, 10) });
+  }
+  for (const v of d.vazamentos.slice(0, 2)) {
+    opcoes.push({ id: v.categoria, rotulo: `${v.rotulo} pela metade`, corte: desce(v.porMes / 2, 10) });
+  }
+  const assinaturas = d.orcamento.find((l) => l.categoria === "assinaturas");
+  if (assinaturas && assinaturas.atual >= 40 && !opcoes.some((o) => o.id === "assinaturas")) {
+    opcoes.push({ id: "assinaturas", rotulo: "Cancelar metade das assinaturas", corte: desce(assinaturas.atual / 2, 10) });
+  }
+  return opcoes.filter((o) => o.corte > 0).slice(0, 3);
+}
+
+/**
+ * Até que dia o dinheiro duraria se saíssem `corte` reais a menos por mês dos
+ * gastos do dia a dia (espalhados pelos 30 dias) e `corteInvisivel` a menos do
+ * gasto invisível (que, pelo próprio cálculo, sai até o dia contado).
+ */
+export function simularDia(d: Diagnostico, corte: number, corteInvisivel = 0): number | null {
+  const disponivel = d.renda - d.gastosFixos - d.parcelasMes;
+  if (disponivel <= 0) return 1;
+  // Com gasto invisível, o ritmo de hoje é o do dia contado pela pessoa.
+  const ritmoHoje =
+    d.gastoInvisivel > 0 && d.diaContado !== null
+      ? disponivel / Math.min(d.diaContado, DIAS_NO_MES)
+      : d.gastosDiaADia / DIAS_NO_MES;
+  const diasDoInvisivel = d.diaContado !== null ? Math.min(d.diaContado, DIAS_NO_MES) : DIAS_NO_MES;
+  return diaEmQueAcaba(disponivel, ritmoHoje - corte / DIAS_NO_MES - corteInvisivel / diasDoInvisivel);
 }

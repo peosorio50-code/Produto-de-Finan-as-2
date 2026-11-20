@@ -37,7 +37,10 @@ export default async function PaginaPrivacidade() {
           <h2 className="titulo-3">Para que usamos seu contato</h2>
           <p>
             Para falar com você sobre o seu resultado e sobre o plano completo, por e-mail e WhatsApp.
-            Para não receber mais mensagens, responda a qualquer uma delas pedindo para sair
+            Quem termina o quiz e não compra recebe no máximo três e-mails nos dias seguintes: o
+            resultado guardado, o que o plano faz e um último lembrete. Todos têm um link para sair
+            da lista. Para não receber mais mensagens, use esse link, responda a qualquer uma delas
+            pedindo para sair
             {MARCA.contatoEmail && (
               <>
                 {" "}
@@ -53,9 +56,11 @@ export default async function PaginaPrivacidade() {
           <p>
             O resultado é calculado no seu aparelho, e as respostas ficam guardadas no armazenamento
             do navegador. Quando você começa o quiz, seu nome, e-mail e WhatsApp são gravados no nosso
-            servidor. Quando termina, gravamos junto um resumo do resultado: o tipo de mês, o nível, a
-            renda, os totais de gastos e parcelas, o dia em que o dinheiro acaba e as respostas de
-            múltipla escolha, para que a conversa seja sobre o seu caso.
+            servidor. Quando termina, gravamos as respostas do quiz e um resumo do resultado (o tipo de
+            mês, o nível, a renda, os totais de gastos e parcelas e o dia em que o dinheiro acaba),
+            para que a conversa seja sobre o seu caso e para que o link do resultado, enviado por
+            e-mail, abra em qualquer aparelho. Esse link é secreto: guarde-o como guardaria um
+            documento.
           </p>
           <p>
             Quando você clica para comprar o plano completo, gravamos no servidor as respostas do quiz,
@@ -71,6 +76,20 @@ export default async function PaginaPrivacidade() {
             indicado em &ldquo;Seus direitos sobre os dados&rdquo;.
           </p>
         </section>
+
+        {process.env.META_PIXEL_ID && (
+          <section className="bloco">
+            <h2 className="titulo-3">Anúncios e medição</h2>
+            <p>
+              Usamos o pixel da Meta (Facebook e Instagram) para saber quais anúncios trazem pessoas
+              ao quiz e às compras. Ele registra no seu navegador as páginas visitadas e etapas como
+              começar o quiz, terminá-lo e comprar, sem os valores das suas respostas. A Meta trata
+              esses dados conforme a política de privacidade dela. Você pode limitar esse uso nas
+              configurações de anúncios da sua conta da Meta ou bloqueando cookies de terceiros no
+              navegador.
+            </p>
+          </section>
+        )}
 
         <section className="bloco">
           <h2 className="titulo-3">Pagamento</h2>
@@ -116,8 +135,8 @@ export default async function PaginaPrivacidade() {
           <h2 className="titulo-3">Seus direitos sobre os dados</h2>
           <p>
             Pela Lei Geral de Proteção de Dados, você pode pedir acesso, correção ou exclusão dos seus
-            dados. O que temos é o seu contato, o resumo do resultado do quiz e os registros de
-            pagamento.
+            dados. O que temos é o seu contato, as respostas e o resumo do resultado do quiz e os
+            registros de pagamento.
             {MARCA.contatoEmail && (
               <>
                 {" "}

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { emailConfigurado } from "@/lib/email";
 import { tokensKiwify } from "@/lib/kiwify";
 import { modoPagamento } from "@/lib/pagamento";
+import { recuperacaoConfigurada } from "@/lib/recuperacao";
 
 export const runtime = "nodejs";
 
@@ -24,6 +25,8 @@ export async function GET() {
       assinaturaKiwify: tokensKiwify().length > 0,
       ia: Boolean(process.env.ANTHROPIC_API_KEY),
       email: emailConfigurado(),
+      recuperacao: recuperacaoConfigurada(),
+      pixel: Boolean(process.env.META_PIXEL_ID),
       siteUrl: Boolean(process.env.SITE_URL),
     },
     { status: banco ? 200 : 503 },

@@ -158,14 +158,14 @@ export function primeiroPasso(r: Respostas, d: Diagnostico): { titulo: string; t
       return {
         titulo: `Feche o buraco de ${brl(-d.sobraMes)}`,
         texto: maior
-          ? `Comece pelo que mais pesa e menos dói: ${maior.rotulo.toLowerCase()} leva ${brl(maior.porMes)} por mês. Defina hoje um teto para ele e siga para o próximo grupo.`
+          ? `Comece pelo que mais pesa e menos dói: o gasto com ${maior.rotulo.toLowerCase()}, de ${brl(maior.porMes)} por mês. Defina hoje um teto para ele e siga para o próximo grupo.`
           : "Comece pelos gastos que dá para mudar já: assinaturas, delivery e compras fora da lista. Cada um com um teto definido hoje.",
       };
     case "vazamento_miudo":
       return maior
         ? {
             titulo: "Corte pela metade o maior vazamento",
-            texto: `${maior.rotulo} leva ${brl(maior.porMes)} por mês. Pela metade, são ${brl(maior.porMes / 2)} a mais por mês, ou ${brl(maior.porAno / 2)} no fim do ano.`,
+            texto: `O gasto com ${maior.rotulo.toLowerCase()} é de ${brl(maior.porMes)} por mês. Pela metade, são ${brl(maior.porMes / 2)} a mais por mês, ou ${brl(maior.porAno / 2)} no fim do ano.`,
           }
         : {
             titulo: "Dê um teto para os gastos miúdos",
@@ -208,7 +208,7 @@ export function itensDoPlano(r: Respostas, d: Diagnostico): string[] {
 
   const maior = d.vazamentos[0];
   if (maior) {
-    itens.push(`A meta para ${maior.rotulo.toLowerCase()}, que hoje custa ${brl(maior.porAno)} por ano`);
+    itens.push(`A meta para o gasto com ${maior.rotulo.toLowerCase()}, que hoje custa ${brl(maior.porAno)} por ano`);
   } else {
     itens.push("Onde ajustar no seu orçamento, grupo por grupo");
   }

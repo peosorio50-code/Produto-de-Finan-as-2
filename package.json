@@ -9,7 +9,8 @@
     "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "empacotar": "bash scripts/empacotar.sh"
+    "empacotar": "bash scripts/empacotar.sh",
+    "kit": "node scripts/gerar-kit.cjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",

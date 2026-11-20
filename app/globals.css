@@ -1698,6 +1698,68 @@ select {
   color: var(--verde);
 }
 
+/* Folha de controle do plano: linhas altas para escrever à mão */
+
+.folha-controle td {
+  height: 3rem;
+  vertical-align: middle;
+}
+
+.folha-controle__escrever {
+  min-width: 5.5rem;
+  background: repeating-linear-gradient(to right, var(--linha) 0 6px, transparent 6px 10px) no-repeat left 70% /
+    calc(100% - 1rem) 1px;
+}
+
+/* Prévia do plano no resultado, com os valores escondidos */
+
+.previa {
+  position: relative;
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: var(--papel-pautado);
+  border: 2px dashed var(--linha);
+  border-radius: var(--raio);
+}
+
+.previa > * + * {
+  margin-top: 0.875rem;
+}
+
+.previa__selo {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 700;
+  color: var(--verde-forte);
+}
+
+.previa__selo .trancado__cadeado {
+  color: var(--verde-forte);
+  transform: none;
+}
+
+.previa .pote {
+  background: var(--papel);
+}
+
+.previa__valor {
+  color: var(--grafite);
+  letter-spacing: 0.04em;
+  filter: blur(0.5px);
+  user-select: none;
+}
+
+.previa__semana {
+  font-weight: 700;
+}
+
+/* Tela de prévia no meio do quiz */
+
+.passo .calendario {
+  margin-top: 1.25rem;
+}
+
 /* ---------- Impressão (salvar o plano em PDF) ---------- */
 
 @media print {

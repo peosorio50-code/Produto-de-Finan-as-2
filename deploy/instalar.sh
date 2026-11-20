@@ -61,6 +61,17 @@ if [ ! -f "$BASE/.env" ]; then
 else
   echo "   $BASE/.env já existe e não foi alterado."
 fi
+# Segredo das tarefas (e-mails de recuperação e links de descadastro). Quem
+# instalou uma versão anterior ganha o segredo sem perder o resto do .env.
+if ! grep -qE '^TAREFAS_SEGREDO=.{16,}' "$BASE/.env"; then
+  novo=$(openssl rand -hex 24)
+  if grep -q '^TAREFAS_SEGREDO=' "$BASE/.env"; then
+    sed -i "s/^TAREFAS_SEGREDO=.*/TAREFAS_SEGREDO=$novo/" "$BASE/.env"
+  else
+    printf '\n# Segredo interno: protege o cron dos e-mails e assina os links de descadastro.\nTAREFAS_SEGREDO=%s\n' "$novo" >> "$BASE/.env"
+  fi
+  echo "   Gerei o TAREFAS_SEGREDO em $BASE/.env."
+fi
 chown root:root "$BASE/.env"
 chmod 600 "$BASE/.env"
 
@@ -81,14 +92,23 @@ echo "== 5. Comando mesinteiro-admin e backup diário"
 install -m 755 "$AQUI/admin.mjs" "$BASE/admin.mjs"
 cat > /usr/local/bin/mesinteiro-admin <<'SCRIPT'
 #!/usr/bin/env bash
-# Roda como o usuário mesinteiro, para o banco continuar sendo dele.
+# "recuperar": pede ao site para mandar os e-mails de recuperação devidos agora.
+if [ "${1:-}" = "recuperar" ]; then
+  SEGREDO=$(grep -E '^TAREFAS_SEGREDO=' /opt/mesinteiro/.env | cut -d= -f2- || true)
+  exec curl -sS -X POST -H "Authorization: Bearer $SEGREDO" --max-time 280 http://127.0.0.1:8021/api/tarefas/recuperar
+fi
+# O resto roda como o usuário mesinteiro, para o banco continuar sendo dele.
 SITE_URL=$(grep -E '^SITE_URL=' /opt/mesinteiro/.env | cut -d= -f2- || true)
 exec runuser -u mesinteiro -- env SITE_URL="$SITE_URL" MESINTEIRO_DB=/opt/mesinteiro/dados/mesinteiro.db \
   /opt/mesinteiro/node/bin/node --disable-warning=ExperimentalWarning /opt/mesinteiro/admin.mjs "$@"
 SCRIPT
 chmod 755 /usr/local/bin/mesinteiro-admin
-# Minuto diferente do backup do Fôlego (4h17), para os dois não rodarem juntos.
-echo "37 4 * * * root /usr/local/bin/mesinteiro-admin backup >/dev/null 2>&1" > /etc/cron.d/mesinteiro
+# Backup às 4h37 (minuto diferente do backup do Fôlego, 4h17) e e-mails de
+# recuperação de hora em hora (no minuto 7).
+cat > /etc/cron.d/mesinteiro <<'CRON'
+37 4 * * * root /usr/local/bin/mesinteiro-admin backup >/dev/null 2>&1
+7 * * * * root /usr/local/bin/mesinteiro-admin recuperar >/dev/null 2>&1
+CRON
 
 echo "== 6. Serviço"
 if ! systemctl is-active --quiet mesinteiro && command -v ss >/dev/null && ss -ltn "sport = :$PORTA" | grep -q LISTEN; then

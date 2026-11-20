@@ -3,12 +3,24 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Compartilhar } from "@/components/Compartilhar";
 import { CalendarioMes, EscalaNivel, FRASE_NIVEL, LinhasDiagnostico } from "@/components/Resumo";
-import { gravarPedido, lerContato, lerOrigem, lerPedido, lerPlano, lerRespostas } from "@/lib/armazenamento";
+import { Simulador } from "@/components/Simulador";
+import {
+  gravarContato,
+  gravarPedido,
+  gravarRespostas,
+  lerContato,
+  lerOrigem,
+  lerPedido,
+  lerPlano,
+  lerRespostas,
+} from "@/lib/armazenamento";
 import { MARCA, PRECO_REAIS } from "@/lib/config";
 import { diagnosticar } from "@/lib/diagnostico";
 import { brl, brlCentavos, pct } from "@/lib/formato";
 import { leituraGratuita } from "@/lib/narrativa-padrao";
+import { rastrear } from "@/lib/pixel";
 import { ACOLHIMENTO, itensDoPlano, perfilDaSituacao } from "@/lib/perfil";
 import {
   FRASE_QUANDO_ACABA,
@@ -17,7 +29,7 @@ import {
   ROTULOS_SENTIMENTO,
   ROTULOS_VAZAMENTO,
 } from "@/lib/rotulos";
-import type { Respostas } from "@/lib/tipos";
+import type { Contato, Diagnostico, Respostas } from "@/lib/tipos";
 
 const ERROS: Record<string, string> = {
   pagamento_nao_configurado: "O plano completo ainda não está à venda. Tente de novo em alguns dias.",
@@ -33,6 +45,33 @@ function Cadeado() {
         d="M4.5 7V5a3.5 3.5 0 1 1 7 0v2h.5A1.5 1.5 0 0 1 13.5 8.5v5A1.5 1.5 0 0 1 12 15H4a1.5 1.5 0 0 1-1.5-1.5v-5A1.5 1.5 0 0 1 4 7h.5Zm1.5 0h4V5a2 2 0 1 0-4 0v2Z"
       />
     </svg>
+  );
+}
+
+/** "R$ 1.234" vira "R$ •.•••": mostra que o número existe sem entregar o valor. */
+const mascarar = (valor: number) => brl(valor).replace(/\d/g, "•");
+
+/** O plano da pessoa já calculado, com os valores escondidos: o que ela leva ao comprar. */
+function PreviaPlano({ d }: { d: Diagnostico }) {
+  return (
+    <div className="previa" aria-label="Prévia do seu plano, com os valores escondidos">
+      <p className="previa__selo pequeno">
+        <Cadeado /> Seu plano já está calculado
+      </p>
+      <ul className="potes">
+        {d.potes.map((pote) => (
+          <li key={pote.id} className="pote" data-pote={pote.id}>
+            <span className="pote__nome">{pote.rotulo}</span>
+            <span className="pote__valor numero previa__valor" aria-label="valor escondido">
+              {mascarar(pote.valor)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="previa__semana">
+        Dia a dia: <span className="numero previa__valor">{mascarar(d.livrePorSemana)}</span> por semana
+      </p>
+    </div>
   );
 }
 
@@ -53,16 +92,40 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
 
+  const token = parametros.get("r");
+
   useEffect(() => {
-    setRespostas(respostasAtuais(lerRespostas()));
     const pedido = lerPedido();
     if (pedido && lerPlano(pedido.ref)) setPlanoPronto(pedido.ref);
-  }, []);
+    if (!token) {
+      setRespostas(respostasAtuais(lerRespostas()));
+      return;
+    }
+    // Link dos e-mails: o resultado vem do servidor e passa a valer neste aparelho.
+    let ativo = true;
+    fetch(`/api/resultado?r=${encodeURIComponent(token)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((dados: { respostas: Respostas; contato: Contato } | null) => {
+        if (!ativo) return;
+        if (dados?.respostas) {
+          gravarRespostas(dados.respostas);
+          gravarContato(dados.contato);
+          setRespostas(dados.respostas);
+        } else {
+          setRespostas(respostasAtuais(lerRespostas()));
+        }
+      })
+      .catch(() => ativo && setRespostas(respostasAtuais(lerRespostas())));
+    return () => {
+      ativo = false;
+    };
+  }, [token]);
 
   const d = useMemo(() => (respostas ? diagnosticar(respostas) : null), [respostas]);
   const leitura = useMemo(() => (respostas && d ? leituraGratuita(respostas, d) : null), [respostas, d]);
 
   async function liberarPlano() {
+    rastrear("InitiateCheckout", { value: PRECO_REAIS, currency: "BRL" });
     setEnviando(true);
     setErro(null);
     try {
@@ -139,6 +202,7 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
           {FRASE_NIVEL[d.nivel]}
         </p>
         <p className="apoio">{ACOLHIMENTO[respostas.sentimento]}</p>
+        <Compartilhar titulo={perfil.titulo} id={perfil.id} />
       </header>
 
       {parametros.get("pagamento") === "falhou" && (
@@ -238,6 +302,8 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
         </div>
       </section>
 
+      <Simulador d={d} />
+
       <section className="bloco bloco--final">
         <h2 className="titulo-2">O próximo passo: o seu plano do mês</h2>
         <p className="destaque apoio">
@@ -261,6 +327,8 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
             </li>
           ))}
         </ul>
+
+        <PreviaPlano d={d} />
 
         <div className="canhoto" style={{ marginTop: "2rem" }}>
           <div className="canhoto__corpo">

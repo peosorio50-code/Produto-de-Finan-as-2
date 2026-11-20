@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CampoDinheiro, Cartoes, CartoesMultiplos } from "@/components/Campos";
+import { CalendarioMes } from "@/components/Resumo";
 import {
   gravarContato,
   gravarRascunho,
@@ -13,11 +14,13 @@ import {
   lerRascunho,
 } from "@/lib/armazenamento";
 import { emailPareceValido, telefoneValido } from "@/lib/contato";
-import { CATEGORIAS_DIA_A_DIA, CATEGORIAS_FIXAS } from "@/lib/diagnostico";
+import { CATEGORIAS_DIA_A_DIA, CATEGORIAS_FIXAS, DIA_CONTADO, diaEmQueAcaba } from "@/lib/diagnostico";
 import { mascaraTelefone } from "@/lib/formato";
 import { LIMITES } from "@/lib/limites";
+import { rastrear } from "@/lib/pixel";
 import {
   AJUDA_GASTO,
+  FRASE_QUANDO_ACABA,
   ROTULOS_COMO_FECHA,
   ROTULOS_CONTROLE,
   ROTULOS_FATURA,
@@ -161,6 +164,7 @@ type Tela =
   | { id: "renda" }
   | { id: "gastos"; grupo: "fixos" | "dia_a_dia" }
   | { id: "parcelas" }
+  | { id: "previa" }
   | { id: "multipla"; campo: Multipla };
 
 const PESSOAS: Record<string, string> = { "1": "Só eu", "2": "2 pessoas", "3": "3 pessoas", "4": "4 pessoas", "5": "5 ou mais" };
@@ -233,6 +237,8 @@ function montarTelas(f: Formulario): Tela[] {
     { id: "gastos", grupo: "fixos" },
     { id: "gastos", grupo: "dia_a_dia" },
     { id: "parcelas" },
+    // Uma pausa com a primeira conta feita: dá vontade de ir até o fim.
+    { id: "previa" },
     { id: "escolha", campo: "fatura" },
   ];
   if (f.quandoAcaba !== "sobra") telas.push({ id: "multipla", campo: "comoFecha" });
@@ -269,6 +275,7 @@ function validar(tela: Tela, f: Formulario): Erros {
         e.gastos = "Preencha pelo menos um valor. Um valor aproximado já serve.";
       break;
     case "parcelas":
+    case "previa":
       break;
     case "multipla":
       if (tela.campo === "comoFecha" && ACABA_ANTES.has(f.quandoAcaba) && f.comoFecha.length === 0)
@@ -371,6 +378,7 @@ export function Quiz() {
     const respostas = paraRespostas(formulario);
     gravarRespostas(respostas);
     registrar("quiz_concluido", limparContato(formulario.contato), respostas);
+    rastrear("CompleteRegistration", { content_name: "quiz" });
     setAnalisando(true);
     window.scrollTo({ top: 0 });
     espera.current = setTimeout(() => roteador.push("/resultado"), ANALISE.length * 650 + 500);
@@ -388,6 +396,7 @@ export function Quiz() {
       if (JSON.stringify(anterior) !== JSON.stringify(contato)) {
         gravarContato(contato);
         registrar("quiz_iniciado", contato);
+        rastrear("Lead");
       }
       setF((x) => ({ ...x, contato }));
     }
@@ -420,6 +429,13 @@ export function Quiz() {
   const total = telas.length;
   const escolhaSemResposta = tela.id === "escolha" && !f[tela.campo];
   const ultimo = passo === total - 1;
+  const perguntas: Tela[] = telas.filter((t) => t.id !== "contato" && t.id !== "previa");
+  const rotuloDoPasso =
+    passo === 0
+      ? "Antes de começar"
+      : tela.id === "previa"
+        ? "Primeira conta feita"
+        : `Pergunta ${perguntas.indexOf(tela) + 1} de ${perguntas.length}`;
 
   return (
     <form
@@ -432,7 +448,7 @@ export function Quiz() {
     >
       <div className="progresso">
         <span className="pequeno apoio">
-          {passo === 0 ? "Antes de começar" : `Pergunta ${passo} de ${total - 1}`}
+          {rotuloDoPasso}
         </span>
         <div
           className="progresso__trilho"
@@ -631,6 +647,8 @@ export function Quiz() {
         </>
       )}
 
+      {tela.id === "previa" && <TelaPrevia f={f} titulo={titulo} />}
+
       {tela.id === "multipla" && (
         <>
           <div className="passo__cabeca">
@@ -674,5 +692,33 @@ export function Quiz() {
         )}
       </div>
     </form>
+  );
+}
+
+/** A conta feita até aqui: até que dia o dinheiro dura só pelos valores informados. */
+function TelaPrevia({ f, titulo }: { f: Formulario; titulo: React.RefObject<HTMLHeadingElement | null> }) {
+  const fixos = CATEGORIAS_FIXAS.reduce((soma, c) => soma + f.gastos[c], 0);
+  const diaADia = CATEGORIAS_DIA_A_DIA.reduce((soma, c) => soma + f.gastos[c], 0);
+  const disponivel = f.rendaMensal - fixos - f.parcelas.cartao - f.parcelas.emprestimos;
+  const dia = diaEmQueAcaba(disponivel, diaADia / 30);
+  const contado = f.quandoAcaba ? DIA_CONTADO[f.quandoAcaba] : null;
+  // A pessoa contou que o dinheiro acaba bem antes do que as contas dizem.
+  const diferenca = contado !== null && contado < 30 && (dia === null || dia > contado + 2);
+  return (
+    <>
+      <div className="passo__cabeca">
+        <h1 className="titulo-2" ref={titulo} tabIndex={-1}>
+          {dia === null
+            ? "Pelos valores que você deu, o dinheiro chegaria ao dia 30"
+            : `Pelos valores que você deu, o dinheiro duraria até o dia ${dia}`}
+        </h1>
+        <p className="apoio">
+          {diferenca && f.quandoAcaba
+            ? `Mas você contou que ele ${FRASE_QUANDO_ACABA[f.quandoAcaba]}. No resultado, você descobre de onde vem essa diferença.`
+            : "Agora, umas perguntas rápidas sobre hábitos, para entender o porquê."}
+        </p>
+      </div>
+      <CalendarioMes ate={dia} rotulo="Primeira conta" legenda={false} />
+    </>
   );
 }

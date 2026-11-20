@@ -1,6 +1,7 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { diagnosticar } from "@/lib/diagnostico";
 import { montarLead, registrarLead, resumirParaLead } from "@/lib/leads";
+import { salvarResultado } from "@/lib/resultados";
 import { sanitizarContato, sanitizarOrigem, sanitizarRespostas } from "@/lib/validacao";
 
 export const runtime = "nodejs";
@@ -26,6 +27,13 @@ export async function POST(requisicao: NextRequest) {
     const respostas = sanitizarRespostas(corpo?.respostas);
     if (!respostas) {
       return NextResponse.json({ erro: "respostas_invalidas" }, { status: 400 });
+    }
+    // As respostas ficam guardadas: abrem o resultado em qualquer aparelho e
+    // alimentam os e-mails de recuperação. Uma falha aqui não trava o quiz.
+    try {
+      salvarResultado({ contato, respostas, origem });
+    } catch (erro) {
+      console.error("[lead] falha ao guardar o resultado:", erro instanceof Error ? erro.message : erro);
     }
     // O resumo é recalculado aqui, com as mesmas regras do resultado da tela.
     const resultado = resumirParaLead(respostas, diagnosticar(respostas));

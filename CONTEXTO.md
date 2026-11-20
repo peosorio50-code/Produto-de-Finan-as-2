@@ -80,6 +80,9 @@ julgamento sobre como a pessoa gasta e sem promessa de resultado.**
 | `POST /api/kiwify/[segredo]` | | Webhook da Kiwify. |
 | `POST /api/plano` | | Gera ou devolve o plano de um pedido pago. |
 | `POST /api/vincular`, `/api/reenviar` | | "Paguei com outro e-mail" e "manda o link de novo". |
+| `GET /api/resultado?r=TOKEN` | | Resultado guardado, para o link dos e-mails abrir em qualquer aparelho. |
+| `POST /api/tarefas/recuperar` | | Manda os e-mails de recuperação devidos (cron, com `TAREFAS_SEGREDO`). |
+| `/sair`, `POST /api/sair` | `app/sair/page.tsx` | Descadastro com link assinado (só por POST, para robôs não descadastrarem ninguém). |
 | `GET /api/saude` | | O que está ligado, sem mostrar chaves. |
 
 ### Telas do quiz (em `montarTelas`)
@@ -93,6 +96,9 @@ julgamento sobre como a pessoa gasta e sem promessa de resultado.**
 7. contas fixas (moradia, contas, transporte, saúde e educação, assinaturas)
 8. dia a dia (mercado, delivery e lanches, compras e lazer, outros)
 9. parcelas (cartão; empréstimos, financiamentos e carnês)
+   → tela "Primeira conta feita": o dia pelas contas até aqui e, se a pessoa
+   disse que o dinheiro acaba antes, o gancho "no resultado você descobre de
+   onde vem essa diferença"
 10. fatura do cartão
 11. como fecha o mês quando o dinheiro acaba (pulada se "sobra")
 12. onde o dinheiro escapa
@@ -126,6 +132,15 @@ O rascunho fica no `localStorage` (`mesinteiro:quiz`, `VERSAO_RASCUNHO`).
 8. **Separação do Fôlego**: prefixo `mi-` nas referências, `KIWIFY_PRODUTO`
    padrão `mes inteiro`, chaves `mesinteiro:*` no navegador, serviço, porta,
    usuário e banco próprios.
+
+9. **Recuperação de venda** (`lib/recuperacao.ts`): respostas guardadas no
+   fim do quiz (`resultados`), três e-mails (1 h, 24 h, 72 h) para quem não
+   comprou, no máximo um a cada 12 h, parando na compra ou no descadastro
+   (`descadastros`), com registro em `envios`. Janela de 3 dias depois de cada
+   prazo, para o cron parado não mandar e-mail velho.
+10. **Pixel opcional** (`components/Pixel.tsx`): só existe com `META_PIXEL_ID`.
+    `Purchase` só sai quando o plano acabou de ser gerado (menos de 30 min) e
+    uma vez por pedido no aparelho, com `eventID` = referência do pedido.
 
 ---
 
@@ -168,6 +183,11 @@ O rascunho fica no `localStorage` (`mesinteiro:quiz`, `VERSAO_RASCUNHO`).
   meses do essencial (contas + parcelas + mercado), com meses no ritmo do plano.
 - **Nível** por pontos (parte do salário com destino, sobra, parcelas, fecha no
   crédito, fatura, reserva, apostas): ≥ 9 → 4; ≥ 6 → 3; ≥ 3 → 2; senão 1.
+
+- **Simulador "E se...?"** (`opcoesDeSimulacao`, `simularDia`): até três
+  mudanças (metade do gasto invisível e dos dois maiores vazamentos, ou das
+  assinaturas). Cortes do dia a dia são espalhados pelos 30 dias; o corte do
+  gasto invisível sai do ritmo até o dia contado, coerente com o cálculo dele.
 
 ### Tipos de mês (`lib/perfil.ts`, o primeiro que bater)
 
@@ -231,6 +251,10 @@ Se mudar a `Narrativa`, mude junto: `tipos.ts`, esquema e prompt em `ia.ts`,
 | Guia fixo | `lib/guia.ts` |
 | Resultado / plano | `components/Resultado.tsx`, `components/PlanoDocumento.tsx` |
 | Cores | `app/globals.css` |
+| E-mails de recuperação | `lib/recuperacao.ts` |
+| Simulador do resultado | `components/Simulador.tsx` |
+| Pixel | `components/Pixel.tsx`, `lib/pixel.ts` |
+| Kit (criativos, Kiwify, prévia do link) | `scripts/gerar-kit.cjs`, `kit/ANUNCIOS.md` |
 
 **Ao acrescentar uma pergunta**: `tipos.ts`, `rotulos.ts`, `validacao.ts`
 (esquema e objeto normalizado, na ordem), `Quiz.tsx` (tela, validação,

@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlanoDocumento } from "@/components/PlanoDocumento";
 import { gravarPlano, lerPedido, lerPlano } from "@/lib/armazenamento";
+import { PRECO_REAIS } from "@/lib/config";
+import { rastrear } from "@/lib/pixel";
 import type { PlanoCompleto } from "@/lib/tipos";
 
 type Estado =
@@ -22,6 +24,22 @@ const ETAPAS = [
   "Escrevendo seu plano",
   "Revisando os detalhes",
 ];
+
+/**
+ * Compra no pixel: só quando o plano acabou de sair (não a cada vez que o
+ * link é aberto) e uma vez por pedido neste aparelho.
+ */
+function contarCompra(plano: PlanoCompleto) {
+  const chave = `mesinteiro:pixel-compra:${plano.ref}`;
+  try {
+    const recente = Date.now() - new Date(plano.geradoEm).getTime() < 30 * 60 * 1000;
+    if (!recente || window.localStorage.getItem(chave)) return;
+    window.localStorage.setItem(chave, "1");
+  } catch {
+    return;
+  }
+  rastrear("Purchase", { value: PRECO_REAIS, currency: "BRL", content_name: "plano" }, plano.ref);
+}
 
 /** Quantas vezes conferir sozinho se o pagamento caiu, a cada 5 segundos. */
 const TENTATIVAS_AUTOMATICAS = 24;
@@ -128,6 +146,7 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
       if (!resposta.ok) throw new Error(String(resposta.status));
       const { plano, podeRegenerar } = dados as { plano: PlanoCompleto; podeRegenerar: boolean };
       gravarPlano(plano);
+      contarCompra(plano);
       setEstado({ fase: "pronto", plano, podeRegenerar });
     } catch {
       setEstado({ fase: "erro" });

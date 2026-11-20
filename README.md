@@ -16,15 +16,24 @@ problema que o produto resolve. O porquê está em [CONTEXTO.md](CONTEXTO.md).
    dinheiro entra, contas fixas, dia a dia, parcelas, fatura do cartão, como
    fecha o mês, onde o dinheiro escapa, controle, reserva, como se sente e
    objetivo.
+   No meio do quiz, uma tela mostra a primeira conta ("pelos valores que você
+   deu, o dinheiro duraria até o dia 25"), o que dá vontade de ir até o fim.
 3. **Raio-x do mês.** O resultado dá nome ao tipo de mês ("Dinheiro que some",
    "Fim de mês no cartão", "Salário com dono"...), pinta o calendário do mês
    até o dia em que o dinheiro acaba, mostra para onde vai o salário, os
-   vazamentos que mais pesam (por mês e por ano) e o primeiro passo.
-4. **Gancho para o plano.** O fim do resultado retoma o que a pessoa contou e
-   lista o que o plano completo traz para o caso dela.
-5. **Plano.** Depois do pagamento, sai o plano: o salário dividido em quatro
+   vazamentos que mais pesam (por mês e por ano), o primeiro passo e um
+   simulador "E se...?" (cortar um vazamento e ver o calendário mudar). Tem
+   botão de compartilhar o tipo de mês (sem nenhum número).
+4. **Gancho para o plano.** O fim do resultado retoma o que a pessoa contou,
+   lista o que o plano completo traz e mostra o plano já calculado com os
+   valores escondidos.
+5. **Recuperação.** Quem termina o quiz e não compra recebe até 3 e-mails
+   (veja "Recuperação de venda por e-mail").
+6. **Plano.** Depois do pagamento, sai o plano: o salário dividido em quatro
    potes, o valor por semana para o dia a dia, onde ajustar, o calendário do
-   mês, regras pessoais, reserva, desafio de 30 dias e mensagens prontas.
+   mês (com botão que coloca os lembretes no calendário do celular), folha de
+   controle das semanas para imprimir, regras pessoais, reserva, desafio de 30
+   dias e mensagens prontas.
 
 O plano tem duas partes:
 
@@ -86,6 +95,45 @@ ignorados sem gravar nada. O produto é reconhecido pelo nome, com
 `KIWIFY_PRODUTO` (padrão `mes inteiro`). **O nome do produto na Kiwify não pode
 ter a palavra "Fôlego"**: o servidor do Fôlego reconhece os produtos dele por
 essa palavra.
+
+## Recuperação de venda por e-mail
+
+Quem termina o quiz tem as respostas guardadas no servidor (tabela
+`resultados`), com um link secreto que abre o resultado em qualquer aparelho:
+`/resultado?r=TOKEN`. Quem não compra recebe até três e-mails, um por vez:
+
+| Etapa | Quando | O que diz |
+| --- | --- | --- |
+| `resultado` | 1 h depois do quiz | O resultado guardado, com o link, e o primeiro passo |
+| `plano` | 24 h depois | O que o plano faz com os números da pessoa (vazamento, ajustes) |
+| `ultimo` | 72 h depois | Último lembrete, com a garantia |
+
+- A sequência para quando a pessoa compra (por qualquer e-mail ligado ao
+  pedido) ou sai da lista. Cada e-mail tem link de descadastro assinado e o
+  cabeçalho de "cancelar inscrição" em um clique dos leitores de e-mail.
+- Os links levam `utm_source=email&utm_medium=recuperacao&utm_campaign=<etapa>`,
+  então as vendas vindas dos e-mails aparecem como tal na Kiwify e no
+  `mesinteiro-admin status`.
+- Quem manda é o cron da VPS, de hora em hora (`mesinteiro-admin recuperar`,
+  que chama `/api/tarefas/recuperar` com o `TAREFAS_SEGREDO`). Precisa da
+  Resend configurada; o segredo é gerado pelo instalador.
+- Se o cron ficar parado, ninguém recebe e-mail velho: cada etapa só vale até
+  3 dias depois do prazo.
+
+## Pixel da Meta (opcional)
+
+Com `META_PIXEL_ID` no `.env`, o site manda `PageView`, `Lead` (começou o
+quiz), `CompleteRegistration` (terminou), `InitiateCheckout` (clicou em
+comprar) e `Purchase` (o plano saiu, R$ 29,90, uma vez por pedido). Sem a
+variável, nada da Meta é carregado. A página de privacidade passa a explicar o
+pixel sozinha.
+
+## Kit de lançamento
+
+`npm run kit` gera, a partir de HTML com as fontes e as cores do site, a
+imagem do produto e os banners do checkout da Kiwify, 10 criativos 4:5 para
+anúncios, a imagem de prévia do link e o ícone. Os textos sugeridos para cada
+anúncio e as regras da Meta estão em [kit/ANUNCIOS.md](kit/ANUNCIOS.md).
 
 ## IA e créditos
 
@@ -176,7 +224,9 @@ Depois de mudar: `systemctl restart mesinteiro`.
 | `KIWIFY_PRODUTO` | Trecho do nome do produto na Kiwify (padrão `mes inteiro`). |
 | `ANTHROPIC_API_KEY` | Chave da API da Anthropic. Liga o texto personalizado por IA. |
 | `ANTHROPIC_MODEL` | Opcional. Padrão: `claude-opus-5-5`. |
-| `RESEND_API_KEY`, `EMAIL_REMETENTE` | Opcionais. Mandam o link do plano por e-mail. |
+| `RESEND_API_KEY`, `EMAIL_REMETENTE` | Mandam o link do plano e os e-mails de recuperação. |
+| `TAREFAS_SEGREDO` | Gerado pelo instalador. Protege o cron dos e-mails e assina os links de descadastro. |
+| `META_PIXEL_ID` | Opcional. Liga o pixel da Meta. |
 | `LEADS_WEBHOOK_URL`, `LEADS_WEBHOOK_TOKEN` | Opcionais. Cópia dos leads em outra ferramenta. |
 | `PAGAMENTO_MODO` | `teste` simula o pagamento. Só no computador, nunca na VPS. |
 
@@ -199,6 +249,10 @@ Gera `mesinteiro-vps.zip` (site compilado + instalador + serviço +
       se `mesinteiro-admin buscar` mostra a compra ligada ao pedido.
 - [ ] Conferir que uma compra do Fôlego **não** aparece no Mês Inteiro e
       vice-versa (`ignorado: outro_produto` no log).
+- [ ] Fazer o quiz com um e-mail seu, não comprar, rodar `mesinteiro-admin
+      recuperar` depois de 1 hora e conferir o e-mail, o link do resultado e o
+      "sair da lista".
+- [ ] Com o pixel ligado, conferir os eventos no Gerenciador de Eventos da Meta.
 - [ ] Gerar alguns planos com a chave da Anthropic e ler o texto da IA em casos
       diferentes (sobra dinheiro, gasto invisível, mês que não fecha, renda
       variável).
@@ -218,7 +272,9 @@ Gera `mesinteiro-vps.zip` (site compilado + instalador + serviço +
 - O gasto invisível é uma estimativa a partir de uma resposta aproximada
   ("lá pela metade do mês" = dia 15). O texto sempre trata como estimativa.
 - Sem limite de requisições em `/api/lead` e `/api/checkout` (dá para limitar
-  no Cloudflare). Sem pixel de anúncios nem analytics (os UTMs ficam no banco).
+  no Cloudflare).
+- O pixel é só do navegador (sem a API de Conversões): bloqueadores de anúncio
+  e o iOS escondem parte dos eventos.
 
 ## Onde mexer
 
@@ -239,5 +295,11 @@ Gera `mesinteiro-vps.zip` (site compilado + instalador + serviço +
 | Webhook da Kiwify | `app/api/kiwify/[segredo]/route.ts`, `lib/kiwify.ts` |
 | Pedidos, compras e limite de gerações da IA | `lib/registros.ts` |
 | E-mail com o link do plano | `lib/email.ts` |
+| E-mails de recuperação (prazos e textos) | `lib/recuperacao.ts` |
+| Descadastro e segredo das tarefas | `lib/descadastro.ts`, `app/sair/page.tsx` |
+| Simulador "E se...?" | `components/Simulador.tsx`, `simularDia` em `lib/diagnostico.ts` |
+| Lembretes do calendário (.ics) | `lib/lembretes.ts` |
+| Pixel da Meta | `components/Pixel.tsx`, `lib/pixel.ts` |
+| Imagens do kit e prévia do link | `scripts/gerar-kit.cjs` |
 | Instalação na VPS e `mesinteiro-admin` | `deploy/` |
 | Cores e fontes | `app/globals.css` |
