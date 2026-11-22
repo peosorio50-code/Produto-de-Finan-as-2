@@ -9,6 +9,7 @@ next-env.d.ts
 .vercel
 .DS_Store
 dados
-pacote
-mesinteiro-vps.zip
 kit/.tmp
+__pycache__
+*.pyc
+kit/.tmp-videos

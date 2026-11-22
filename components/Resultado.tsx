@@ -16,9 +16,12 @@ import {
   lerPlano,
   lerRespostas,
 } from "@/lib/armazenamento";
+import { api, config, postar } from "@/lib/api";
 import { MARCA, PRECO_REAIS } from "@/lib/config";
 import { diagnosticar } from "@/lib/diagnostico";
+import { contar } from "@/lib/eventos";
 import { brl, brlCentavos, pct } from "@/lib/formato";
+import { dadosParaIA } from "@/lib/ia-dados";
 import { leituraGratuita } from "@/lib/narrativa-padrao";
 import { rastrear } from "@/lib/pixel";
 import { ACOLHIMENTO, itensDoPlano, perfilDaSituacao } from "@/lib/perfil";
@@ -29,7 +32,9 @@ import {
   ROTULOS_SENTIMENTO,
   ROTULOS_VAZAMENTO,
 } from "@/lib/rotulos";
-import type { Contato, Diagnostico, Respostas } from "@/lib/tipos";
+import { resumoParaServidor } from "@/lib/resumo";
+import type { Contato, Diagnostico, Origem, Respostas } from "@/lib/tipos";
+import { sanitizarRespostas } from "@/lib/validacao";
 
 const ERROS: Record<string, string> = {
   pagamento_nao_configurado: "O plano completo ainda não está à venda. Tente de novo em alguns dias.",
@@ -75,6 +80,24 @@ function PreviaPlano({ d }: { d: Diagnostico }) {
   );
 }
 
+/**
+ * Servidor fora do ar: o link direto da Kiwify (sem pedido). A compra entra
+ * sem quiz e o servidor pede, por e-mail, o quiz com o mesmo e-mail; quem
+ * voltar para /plano neste aparelho é levado ao plano sozinho.
+ */
+function linkReserva(contato: Contato | null, origem: Origem): string | null {
+  const base = config().checkoutReserva;
+  if (!/^https:\/\//.test(base)) return null;
+  const q = new URLSearchParams();
+  if (contato) {
+    q.set("name", contato.nome);
+    q.set("email", contato.email);
+  }
+  for (const [k, v] of Object.entries(origem)) if (k.startsWith("utm_") && v) q.set(k, v);
+  const qs = q.toString();
+  return qs ? `${base}${base.includes("?") ? "&" : "?"}${qs}` : base;
+}
+
 /** Respostas salvas por uma versão antiga do quiz não têm as perguntas de hoje. */
 function respostasAtuais(salvas: Respostas | null): Respostas | null {
   return salvas?.quandoAcaba && salvas?.parcelas && salvas?.gastos?.comer_fora !== undefined ? salvas : null;
@@ -83,9 +106,11 @@ function respostasAtuais(salvas: Respostas | null): Respostas | null {
 /**
  * Resultado do quiz. Entrega o raio-x do mês primeiro; o plano pago só
  * aparece no fim, ligado ao que a pessoa respondeu.
- * `vendaAberta` é falso enquanto o pagamento não está configurado.
+ * Com VENDA_ABERTA: false no config.js, o botão de compra vira "Em breve".
+ * (Este componente só aparece no navegador: o HTML do build não tem o resultado.)
  */
-export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
+export function Resultado() {
+  const vendaAberta = config().vendaAberta;
   const parametros = useSearchParams();
   const [respostas, setRespostas] = useState<Respostas | null | undefined>(undefined);
   const [planoPronto, setPlanoPronto] = useState<string | null>(null);
@@ -103,14 +128,15 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
     }
     // Link dos e-mails: o resultado vem do servidor e passa a valer neste aparelho.
     let ativo = true;
-    fetch(`/api/resultado?r=${encodeURIComponent(token)}`)
+    fetch(`${api()}/resultado?r=${encodeURIComponent(token)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((dados: { respostas: Respostas; contato: Contato } | null) => {
         if (!ativo) return;
-        if (dados?.respostas) {
-          gravarRespostas(dados.respostas);
-          gravarContato(dados.contato);
-          setRespostas(dados.respostas);
+        const vindas = sanitizarRespostas(dados?.respostas);
+        if (dados && vindas) {
+          gravarRespostas(vindas);
+          if (dados.contato) gravarContato(dados.contato);
+          setRespostas(vindas);
         } else {
           setRespostas(respostasAtuais(lerRespostas()));
         }
@@ -124,16 +150,43 @@ export function Resultado({ vendaAberta }: { vendaAberta: boolean }) {
   const d = useMemo(() => (respostas ? diagnosticar(respostas) : null), [respostas]);
   const leitura = useMemo(() => (respostas && d ? leituraGratuita(respostas, d) : null), [respostas, d]);
 
+  useEffect(() => {
+    if (d) contar("Resultado");
+  }, [d]);
+
   async function liberarPlano() {
+    const r = respostas ? sanitizarRespostas(respostas) : null;
+    if (!r || !d) {
+      setErro(ERROS.respostas_invalidas);
+      return;
+    }
     rastrear("InitiateCheckout", { value: PRECO_REAIS, currency: "BRL" });
+    contar("Checkout");
     setEnviando(true);
     setErro(null);
+    const contato = lerContato();
+    const origem = lerOrigem();
+    let resposta: Response;
     try {
-      const resposta = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ respostas, contato: lerContato(), origem: lerOrigem() }),
+      resposta = await postar("/checkout", {
+        respostas: r,
+        contato,
+        origem,
+        resumo: resumoParaServidor(r, d, true),
+        dadosIA: dadosParaIA(r, d),
       });
+    } catch {
+      // Sem resposta do servidor: o link de reserva ainda vende (o plano sai depois do quiz com o mesmo e-mail).
+      const reserva = linkReserva(contato, origem);
+      if (reserva) {
+        window.location.assign(reserva);
+        return;
+      }
+      setErro(ERROS.falha_no_pagamento);
+      setEnviando(false);
+      return;
+    }
+    try {
       const dados = await resposta.json();
       if (!resposta.ok) throw new Error(dados.erro);
       gravarPedido({

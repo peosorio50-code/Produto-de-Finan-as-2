@@ -1,10 +1,8 @@
 import Link from "next/link";
-import { connection } from "next/server";
+import { EmailContato } from "@/components/Contato";
 import { MARCA } from "@/lib/config";
 
-export async function Rodape() {
-  // O e-mail de atendimento vem do .env do servidor, lido a cada visita.
-  await connection();
+export function Rodape() {
   return (
     <footer className="rodape nao-imprimir">
       <div className="pagina rodape__grade">
@@ -13,7 +11,7 @@ export async function Rodape() {
           <p className="pequeno">Um produto {MARCA.casa}</p>
           <nav className="rodape__links pequeno" aria-label="Rodapé">
             <Link href="/privacidade">Privacidade e termos</Link>
-            {MARCA.contatoEmail && <a href={`mailto:${MARCA.contatoEmail}`}>{MARCA.contatoEmail}</a>}
+            <EmailContato />
           </nav>
         </div>
         <p className="pequeno">

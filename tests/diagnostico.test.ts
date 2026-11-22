@@ -5,7 +5,6 @@ import { EXEMPLO } from "@/lib/exemplo";
 import { brl } from "@/lib/formato";
 import { lembretesIcs } from "@/lib/lembretes";
 import { leituraGratuita, narrativaPadrao } from "@/lib/narrativa-padrao";
-import { criarReferencia, referenciaCombina, referenciaValida } from "@/lib/pedido";
 import type { Respostas } from "@/lib/tipos";
 import { sanitizarRespostas } from "@/lib/validacao";
 
@@ -230,18 +229,7 @@ describe("lembretes do plano", () => {
   });
 });
 
-describe("pedido e validação", () => {
-  it("a referência só combina com as respostas que a geraram", () => {
-    const r = sanitizarRespostas(respostas())!;
-    const ref = criarReferencia(r);
-    expect(ref.startsWith("mi-")).toBe(true);
-    expect(referenciaValida(ref)).toBe(true);
-    expect(referenciaValida("fl-0123456789ab-0123456789abcdef")).toBe(false);
-    expect(referenciaCombina(ref, r)).toBe(true);
-    const outras = sanitizarRespostas(respostas({ rendaMensal: 9999 }))!;
-    expect(referenciaCombina(ref, outras)).toBe(false);
-  });
-
+describe("validação das respostas", () => {
   it("normaliza texto livre, listas e valores", () => {
     const bruto = respostas({
       nome: "  Ana <script>  Souza  ",

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { CalendarioMes } from "@/components/Resumo";
 import { opcoesDeSimulacao, simularDia } from "@/lib/diagnostico";
+import { contar } from "@/lib/eventos";
 import { brl } from "@/lib/formato";
 import type { Diagnostico } from "@/lib/tipos";
 
@@ -35,7 +36,10 @@ export function Simulador({ d }: { d: Diagnostico }) {
               type="button"
               className="cartao cartao--multiplo"
               aria-pressed={ligada}
-              onClick={() => setLigadas((atual) => (ligada ? atual.filter((id) => id !== opcao.id) : [...atual, opcao.id]))}
+              onClick={() => {
+                contar("Simulou");
+                setLigadas((atual) => (ligada ? atual.filter((id) => id !== opcao.id) : [...atual, opcao.id]));
+              }}
             >
               <span className="cartao__marca" aria-hidden="true" />
               <span className="cartao__texto">

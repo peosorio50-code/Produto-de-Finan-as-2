@@ -1,6 +1,6 @@
 /**
- * Identidade e oferta do produto. Para mudar nome, preço ou e-mail de
- * atendimento, altere aqui (o e-mail também aceita variável de ambiente).
+ * Identidade e oferta do produto. Para mudar nome ou preço, altere aqui. O
+ * e-mail de atendimento, o pixel e o upsell ficam em public/config.js.
  */
 export const MARCA = {
   nome: "Mês Inteiro",
@@ -13,12 +13,6 @@ export const MARCA = {
   precoCentavos: 2990,
   /** Nome que aparece na fatura do cartão do comprador (até 13 letras, sem acento). */
   nomeNaFatura: "MESINTEIRO",
-  /**
-   * E-mail de atendimento (variável CONTATO_EMAIL, lida no servidor quando o
-   * site roda). Vazio enquanto não houver e-mail: o site esconde os links de
-   * contato. Nos componentes que rodam no navegador ele chega por propriedade.
-   */
-  contatoEmail: process.env.CONTATO_EMAIL || "",
   garantiaDias: 7,
 } as const;
 

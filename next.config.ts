@@ -4,8 +4,11 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   devIndicators: false,
-  // Gera .next/standalone: o servidor que roda na VPS, sem precisar de npm install lá.
-  output: "standalone",
+  // Site estático: a pasta out/ vai inteira para o Cloudflare Pages (projeto mesinteiro,
+  // domínio mesinteiro.folegofinanceiro.shop). A parte de servidor roda no servidor do
+  // Meu Santo Protetor (api.mapadaalma.online/api/mesinteiro, módulo mesinteiro.py).
+  output: "export",
+  images: { unoptimized: true },
 };
 
 export default config;

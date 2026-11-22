@@ -3,11 +3,19 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { OfertaObrigado, ofertaCabe } from "@/components/OfertaObrigado";
 import { PlanoDocumento } from "@/components/PlanoDocumento";
-import { gravarPlano, lerPedido, lerPlano } from "@/lib/armazenamento";
+import { config, postar } from "@/lib/api";
+import { gravarPedido, gravarPlano, lerContato, lerOrigem, lerPedido, lerPlano, lerRespostas } from "@/lib/armazenamento";
+import { calendarioDoMes } from "@/lib/calendario";
 import { PRECO_REAIS } from "@/lib/config";
+import { diagnosticar } from "@/lib/diagnostico";
+import { contar } from "@/lib/eventos";
+import { conciliar, dadosParaIA, type NarrativaIA } from "@/lib/ia-dados";
+import { narrativaPadrao } from "@/lib/narrativa-padrao";
 import { rastrear } from "@/lib/pixel";
-import type { PlanoCompleto } from "@/lib/tipos";
+import { resumoParaServidor } from "@/lib/resumo";
+import type { PlanoCompleto, Respostas } from "@/lib/tipos";
 
 type Estado =
   | { fase: "carregando" }
@@ -15,7 +23,7 @@ type Estado =
   | { fase: "gerando" }
   | { fase: "aguardando_pagamento" }
   | { fase: "erro" }
-  | { fase: "pronto"; plano: PlanoCompleto; podeRegenerar: boolean };
+  | { fase: "pronto"; plano: PlanoCompleto; podeRegenerar: boolean; acompanhamento: boolean };
 
 const ETAPAS = [
   "Conferindo o pagamento",
@@ -41,8 +49,24 @@ function contarCompra(plano: PlanoCompleto) {
   rastrear("Purchase", { value: PRECO_REAIS, currency: "BRL", content_name: "plano" }, plano.ref);
 }
 
-/** Quantas vezes conferir sozinho se o pagamento caiu, a cada 5 segundos. */
-const TENTATIVAS_AUTOMATICAS = 24;
+/** Pix: confere sozinho se o pagamento caiu, a cada 5 s, por 2 minutos. */
+const TENTATIVAS_PAGAMENTO = 24;
+/** IA escrevendo (resposta 202): pergunta de novo a cada 5 s, por até 5 minutos. */
+const TENTATIVAS_IA = 60;
+
+/** Monta o plano no navegador: os números saem do mesmo motor do quiz; o texto, da IA (ou da versão padrão). */
+function montarPlano(ref: string, respostas: Respostas, ia: NarrativaIA | null, geradoEm: string): PlanoCompleto {
+  const diagnostico = diagnosticar(respostas);
+  return {
+    ref,
+    geradoEm,
+    nome: respostas.nome,
+    diagnostico,
+    calendario: calendarioDoMes(respostas, diagnostico),
+    narrativa: conciliar(ia, narrativaPadrao(respostas, diagnostico)),
+    origemNarrativa: ia ? "ia" : "padrao",
+  };
+}
 
 function Espera() {
   const [etapa, setEtapa] = useState(0);
@@ -55,7 +79,7 @@ function Espera() {
       <h1 className="titulo-2">Montando seu plano</h1>
       <div className="espera__traco" aria-hidden="true" />
       <p className="destaque">{ETAPAS[etapa]}</p>
-      <p className="apoio">Leva cerca de um minuto. Não feche esta página.</p>
+      <p className="apoio">Leva cerca de um minuto. Pode deixar esta página aberta: o plano aparece aqui e o link chega no seu e-mail.</p>
     </div>
   );
 }
@@ -110,32 +134,50 @@ function PedirPorEmail({
 
 /**
  * Página de obrigado (para onde a Kiwify manda depois do pagamento) e link do
- * plano (/plano?ref=...). O plano fica guardado no servidor: o link abre em
- * qualquer aparelho, e a IA só é chamada na primeira vez.
+ * plano (/plano?ref=...). O pedido e o texto da IA ficam no servidor
+ * (api.mapadaalma.online/api/mesinteiro/plano); os números são refeitos aqui,
+ * com o mesmo motor do quiz. O link abre em qualquer aparelho.
  */
-export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: string; reenvioPorEmail: boolean }) {
+export function TelaPlano() {
+  const { contato: contatoEmail, reenvioPorEmail } = config();
   const parametros = useSearchParams();
   const [estado, setEstado] = useState<Estado>({ fase: "carregando" });
+  const [oferta, setOferta] = useState(false);
   const ref = useRef<string | null>(null);
   const urlPagamento = useRef<string | null>(null);
   const iniciou = useRef(false);
   const tentativas = useRef(0);
+  const tentativasIA = useRef(0);
+  const relogio = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refDaUrl = parametros.get("ref");
 
   const buscar = useCallback(async (regenerar = false) => {
     const atual = ref.current;
     if (!atual) return;
-    setEstado((e) => (e.fase === "aguardando_pagamento" ? e : { fase: "gerando" }));
+    if (relogio.current) clearTimeout(relogio.current);
+    setEstado((e) => (e.fase === "aguardando_pagamento" || e.fase === "pronto" ? e : { fase: "gerando" }));
     try {
-      const resposta = await fetch("/api/plano", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ref: atual, regenerar }),
-      });
+      const resposta = await postar("/plano", { ref: atual, regenerar });
       const dados = await resposta.json().catch(() => ({}));
+      if (resposta.status === 202) {
+        // A IA está escrevendo: pergunta de novo daqui a pouco.
+        if (tentativasIA.current++ >= TENTATIVAS_IA) throw new Error("demorou");
+        setEstado((e) => (e.fase === "pronto" ? e : { fase: "gerando" }));
+        relogio.current = setTimeout(() => void buscar(), 5000);
+        return;
+      }
       if (resposta.status === 402) {
         if (dados.urlPagamento) urlPagamento.current = dados.urlPagamento;
+        // Pagou antes, por outro caminho (link de reserva, outro aparelho)? Liga a compra a este pedido.
+        const email = lerContato()?.email;
+        if (email && tentativas.current === 0) {
+          const v = await postar("/vincular", { ref: atual, email }).catch(() => null);
+          if (v?.ok) {
+            void buscar();
+            return;
+          }
+        }
         setEstado({ fase: "aguardando_pagamento" });
         return;
       }
@@ -144,14 +186,45 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
         return;
       }
       if (!resposta.ok) throw new Error(String(resposta.status));
-      const { plano, podeRegenerar } = dados as { plano: PlanoCompleto; podeRegenerar: boolean };
+      const { respostas, ia, geradoEm, podeRegenerar, acompanhamento } = dados as {
+        respostas: Respostas;
+        ia: NarrativaIA | null;
+        geradoEm: string;
+        podeRegenerar: boolean;
+        acompanhamento: boolean;
+      };
+      const plano = montarPlano(atual, respostas, ia, geradoEm);
       gravarPlano(plano);
       contarCompra(plano);
-      setEstado({ fase: "pronto", plano, podeRegenerar });
+      contar("Plano");
+      tentativasIA.current = 0;
+      setEstado({ fase: "pronto", plano, podeRegenerar, acompanhamento: !!acompanhamento });
     } catch {
-      setEstado({ fase: "erro" });
+      setEstado((e) => (e.fase === "pronto" ? e : { fase: "erro" }));
     }
   }, []);
+
+  /** Sem pedido neste aparelho, mas com o quiz feito: cria o pedido (quem pagou pelo link de reserva cai aqui). */
+  const recriarPedido = useCallback(async (respostas: Respostas) => {
+    try {
+      const d = diagnosticar(respostas);
+      const resposta = await postar("/checkout", {
+        respostas,
+        contato: lerContato(),
+        origem: lerOrigem(),
+        resumo: resumoParaServidor(respostas, d, true),
+        dadosIA: dadosParaIA(respostas, d),
+      });
+      if (!resposta.ok) throw new Error();
+      const dados = await resposta.json();
+      gravarPedido({ ref: dados.ref, respostas: dados.respostas, urlPagamento: dados.url, criadoEm: new Date().toISOString() });
+      ref.current = dados.ref;
+      urlPagamento.current = dados.url;
+      void buscar();
+    } catch {
+      setEstado({ fase: "sem_pedido" });
+    }
+  }, [buscar]);
 
   useEffect(() => {
     if (iniciou.current) return;
@@ -162,23 +235,34 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
     const local = lerPedido();
     const atual = refDaUrl ?? local?.ref ?? null;
     if (!atual) {
-      setEstado({ fase: "sem_pedido" });
+      const respostas = lerRespostas();
+      if (respostas && lerContato()) {
+        setEstado({ fase: "gerando" });
+        void recriarPedido(respostas);
+      } else {
+        setEstado({ fase: "sem_pedido" });
+      }
       return;
     }
     ref.current = atual;
-    if (local?.ref === atual) urlPagamento.current = local.urlPagamento;
     const guardado = lerPlano(atual);
+    if (local?.ref === atual) {
+      urlPagamento.current = local.urlPagamento;
+      // Acabou de pagar neste aparelho (ainda não abriu o plano): a oferta da página de obrigado aparece uma vez.
+      if (!guardado && ofertaCabe(atual, local.respostas)) setOferta(true);
+    }
     if (guardado?.origemNarrativa === "ia") {
-      setEstado({ fase: "pronto", plano: guardado, podeRegenerar: false });
+      setEstado({ fase: "pronto", plano: guardado, podeRegenerar: false, acompanhamento: false });
+      void buscar(); // atualiza em silêncio (o aviso do acompanhamento vem do servidor)
       return;
     }
     void buscar();
-  }, [buscar, refDaUrl]);
+  }, [buscar, recriarPedido, refDaUrl]);
 
   // Pix pode levar alguns segundos para ser confirmado: confere de novo sozinho.
   useEffect(() => {
     if (estado.fase !== "aguardando_pagamento") return;
-    if (tentativas.current >= TENTATIVAS_AUTOMATICAS) return;
+    if (tentativas.current >= TENTATIVAS_PAGAMENTO) return;
     const espera = setTimeout(() => {
       tentativas.current += 1;
       void buscar();
@@ -186,9 +270,23 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
     return () => clearTimeout(espera);
   }, [estado, buscar]);
 
+  useEffect(() => () => {
+    if (relogio.current) clearTimeout(relogio.current);
+  }, []);
+
   if (estado.fase === "carregando") return null;
 
-  if (estado.fase === "gerando") return <Espera />;
+  const blocoOferta = oferta && (estado.fase === "gerando" || estado.fase === "pronto") && (
+    <OfertaObrigado refPedido={ref.current ?? ""} fechar={() => setOferta(false)} />
+  );
+
+  if (estado.fase === "gerando")
+    return (
+      <>
+        {blocoOferta}
+        <Espera />
+      </>
+    );
 
   if (estado.fase === "sem_pedido") {
     return (
@@ -196,7 +294,8 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
         <h1 className="titulo-2">Não encontramos seu pedido neste aparelho</h1>
         <p className="apoio">
           Abra esta página pelo link do e-mail de confirmação, ou no navegador em que você respondeu ao
-          quiz.
+          quiz. Se você pagou sem responder ao quiz, faça o quiz com o mesmo e-mail da compra: no fim, o
+          botão leva direto para o seu plano, sem pagar de novo.
           {contatoEmail && (
             <>
               {" "}
@@ -210,18 +309,14 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
             rotulo="Já pagou? Digite o e-mail da compra e mandamos o link do plano de novo."
             botao="Receber o link por e-mail"
             enviar={async (email) => {
-              const r = await fetch("/api/reenviar", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email }),
-              });
+              const r = await postar("/reenviar", { email });
               if (!r.ok) throw new Error();
               return "Se houver uma compra com este e-mail, o link chega em alguns minutos. Confira também o spam.";
             }}
           />
         )}
         <Link href="/diagnostico" className="botao botao--contorno">
-          Fazer o quiz de novo
+          Fazer o quiz
         </Link>
       </div>
     );
@@ -237,7 +332,7 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
           alguns segundos. Estamos conferindo sozinhos, e você não precisa recarregar a página.
         </p>
         <div className="acoes-plano">
-          {urlPagamento.current && (
+          {urlPagamento.current && !urlPagamento.current.includes("/plano?") && (
             <a href={urlPagamento.current} className="botao">
               Ir para o pagamento
             </a>
@@ -258,11 +353,7 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
             rotulo="Pagou com um e-mail diferente do que usou no quiz? Digite o e-mail do pagamento."
             botao="Conferir com este e-mail"
             enviar={async (email) => {
-              const r = await fetch("/api/vincular", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ref: ref.current, email }),
-              });
+              const r = await postar("/vincular", { ref: ref.current, email });
               if (r.ok) {
                 void buscar();
                 return "Encontramos o pagamento. Abrindo seu plano.";
@@ -288,7 +379,14 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
             </>
           )}
         </p>
-        <button type="button" className="botao" onClick={() => void buscar()}>
+        <button
+          type="button"
+          className="botao"
+          onClick={() => {
+            tentativasIA.current = 0;
+            void buscar();
+          }}
+        >
           Tentar de novo
         </button>
       </div>
@@ -297,13 +395,32 @@ export function TelaPlano({ contatoEmail, reenvioPorEmail }: { contatoEmail: str
 
   return (
     <>
+      {blocoOferta}
+      {estado.acompanhamento && (
+        <div className="aviso nao-imprimir" style={{ marginTop: "1.5rem" }}>
+          <p>
+            <strong>Você também levou o acompanhamento.</strong> A partir da próxima segunda-feira, às 8 h,
+            chega um e-mail por semana com o valor da semana e o foco do desafio, durante 4 semanas. No fim,
+            um último e-mail ajuda a fechar o mês.
+          </p>
+        </div>
+      )}
       {estado.plano.origemNarrativa === "padrao" && estado.podeRegenerar && (
         <div className="aviso nao-imprimir" style={{ marginTop: "1.5rem" }}>
           <p>
             A inteligência artificial não respondeu a tempo, então este plano foi escrito pelas nossas
-            regras, com os seus números. Ele já está completo, e você pode pedir a versão escrita pela IA.
+            regras, com os seus números. Ele já está completo. Quando a IA voltar, o texto dela aparece
+            neste mesmo link, ou você pode pedir agora.
           </p>
-          <button type="button" className="botao-texto" onClick={() => void buscar(true)}>
+          <button
+            type="button"
+            className="botao-texto"
+            onClick={() => {
+              tentativasIA.current = 0;
+              setEstado({ fase: "gerando" });
+              void buscar(true);
+            }}
+          >
             Gerar a versão escrita pela IA
           </button>
         </div>

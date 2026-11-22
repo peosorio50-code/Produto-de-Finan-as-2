@@ -1,7 +1,7 @@
 /**
  * O que fica guardado no navegador do cliente: o quiz em andamento, as
- * respostas, o pedido e uma cópia do plano. O servidor guarda os leads, os
- * pedidos e o plano no banco (lib/db.ts).
+ * respostas, o pedido e uma cópia do plano. O servidor (mesinteiro.py, no
+ * servidor do Meu Santo Protetor) guarda os leads, os pedidos e o texto da IA.
  */
 import type { Contato, Origem, PlanoCompleto, Respostas } from "./tipos";
 

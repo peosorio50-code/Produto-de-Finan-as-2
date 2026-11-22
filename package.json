@@ -2,18 +2,18 @@
   "name": "mes-inteiro",
   "version": "1.0.0",
   "private": true,
-  "description": "Mês Inteiro — quiz do salário e plano do mês personalizado por IA",
+  "description": "Mês Inteiro — quiz do salário e plano do mês (site estático; servidor em servidor/mesinteiro.py)",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "empacotar": "bash scripts/empacotar.sh",
-    "kit": "node scripts/gerar-kit.cjs"
+    "teste:servidor": "python3 testes/teste_mesinteiro.py",
+    "kit": "node scripts/gerar-kit.cjs",
+    "kit:videos": "node scripts/gerar-videos.cjs",
+    "entregas": "bash scripts/entregas.sh"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.8.0",
     "@fontsource-variable/bricolage-grotesque": "^5.3.0",
     "@fontsource-variable/caveat": "^5.3.0",
     "@fontsource-variable/figtree": "^5.3.0",

@@ -3,7 +3,7 @@
 > Para quem vai trabalhar neste código (pessoa ou IA). Cobre o produto, por que
 > ele existe, o fluxo, a arquitetura, as regras de cálculo e as decisões que
 > não estão óbvias no código. Para rodar e publicar, veja `README.md` e
-> `COMO-SUBIR.md`.
+> `docs/COMO-SUBIR.md`.
 
 ---
 
@@ -67,23 +67,25 @@ julgamento sobre como a pessoa gasta e sem promessa de resultado.**
 /  →  /diagnostico  →  /resultado  →  checkout (Kiwify)  →  /plano
 ```
 
-| Rota | Arquivo | O que faz |
+O site é **estático** (Cloudflare Pages, projeto `mesinteiro`). As rotas de servidor ficam no módulo
+`servidor/mesinteiro.py`, dentro do servidor do Meu Santo Protetor (`/opt/mapadaalma`, público em
+`https://api.mapadaalma.online`).
+
+| Página / rota | Arquivo | O que faz |
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Página inicial. Fala só do quiz gratuito. Ilustração `CalendarioAnotado` com o caso `lib/exemplo.ts`, calculado pelo motor real. |
 | `/diagnostico` | `components/Quiz.tsx` | O quiz. |
-| `/resultado` | `components/Resultado.tsx` | Resultado gratuito + oferta. |
-| `/plano` | `components/TelaPlano.tsx` + `PlanoDocumento.tsx` | Página de obrigado da Kiwify e link do plano. |
-| `/pagamento-teste` | `app/pagamento-teste/page.tsx` | Substitui a Kiwify com `PAGAMENTO_MODO=teste`. |
-| `/privacidade` | `app/privacidade/page.tsx` | Privacidade e termos. |
-| `POST /api/lead` | | `quiz_iniciado` e `quiz_concluido`. |
-| `POST /api/checkout` | | Cria o pedido no banco e devolve o link da Kiwify. |
-| `POST /api/kiwify/[segredo]` | | Webhook da Kiwify. |
-| `POST /api/plano` | | Gera ou devolve o plano de um pedido pago. |
-| `POST /api/vincular`, `/api/reenviar` | | "Paguei com outro e-mail" e "manda o link de novo". |
-| `GET /api/resultado?r=TOKEN` | | Resultado guardado, para o link dos e-mails abrir em qualquer aparelho. |
-| `POST /api/tarefas/recuperar` | | Manda os e-mails de recuperação devidos (cron, com `TAREFAS_SEGREDO`). |
-| `/sair`, `POST /api/sair` | `app/sair/page.tsx` | Descadastro com link assinado (só por POST, para robôs não descadastrarem ninguém). |
-| `GET /api/saude` | | O que está ligado, sem mostrar chaves. |
+| `/resultado` | `components/Resultado.tsx` | Resultado gratuito + oferta (`?r=TOKEN` abre o resultado guardado no servidor). |
+| `/plano` | `components/TelaPlano.tsx` + `OfertaObrigado.tsx` + `PlanoDocumento.tsx` | Página de obrigado da Kiwify (upsell de 1 clique) e link do plano. |
+| `/privacidade`, `/sair` | `app/privacidade/page.tsx`, `components/SairDaLista.tsx` | Privacidade e termos; descadastro (o botão faz POST no servidor). |
+| `POST /api/mesinteiro/lead` | `mesinteiro.py` | `quiz_iniciado` e `quiz_concluido` (este guarda o resultado e devolve um token). |
+| `GET /api/mesinteiro/resultado?r=` | | Resultado guardado, para o link dos e-mails abrir em qualquer aparelho. |
+| `POST /api/mesinteiro/checkout` | | Cria o pedido (respostas, resumo, JSON da IA) e devolve o link da Kiwify com `sck`. |
+| `POST /api/mesinteiro/plano` | | 402 sem pagamento, 202 enquanto a IA escreve, 200 com `{respostas, ia, acompanhamento}`. |
+| `POST /api/mesinteiro/vincular`, `/reenviar` | | "Paguei com outro e-mail" e "manda o link de novo". |
+| `POST /api/mesinteiro/sair` | | Descadastro com link assinado (só POST). |
+| `POST /webhook/kiwify/<segredo>` | `servidor.py` → `mesinteiro.evento_kiwify` | O webhook de sempre; o desvio do Mês Inteiro vem antes do Fôlego e do Meu Santo. |
+| `POST /api/evento` | `servidor.py` | Contador do funil (`p=mesinteiro`), lido por `mesinteiro.py funil`. |
 
 ### Telas do quiz (em `montarTelas`)
 
@@ -111,36 +113,33 @@ O rascunho fica no `localStorage` (`mesinteiro:quiz`, `VERSAO_RASCUNHO`).
 
 ---
 
-## 4. Arquitetura (igual ao Fôlego)
+## 4. Arquitetura (padrão da skill produto-digital, igual ao Fôlego v2)
 
-1. **A IA não faz conta.** Todo número sai de `lib/diagnostico.ts`. A IA
-   recebe os números prontos e só escreve.
-2. **O plano nunca falha para quem pagou.** Sem IA, IA fora ou resposta
-   inválida, sai `narrativaPadrao` (`lib/narrativa-padrao.ts`).
-3. **Pedido amarrado às respostas.** A referência (`mi-<12 hex>-<16 hex>`)
-   carrega um hash das respostas normalizadas. `sanitizarRespostas` devolve
-   chaves sempre na mesma ordem e listas ordenadas: mudar a normalização
-   invalida pedidos já feitos.
+1. **A IA não faz conta.** Todo número sai de `lib/diagnostico.ts`, no navegador. No checkout, o site manda ao
+   servidor o JSON pronto para a IA (`lib/ia-dados.ts: dadosParaIA`) e um resumo (`lib/resumo.ts`) que alimenta
+   os e-mails. O servidor não refaz contas.
+2. **O plano nunca falha para quem pagou.** O servidor chama a IA quando o pagamento cai. Se ela falhar, o pedido
+   fica com `ia = null` e o navegador monta o plano com `narrativaPadrao`; o servidor tenta a IA de novo a cada
+   30 min (até 3 gerações). `conciliar` completa campo a campo o que a IA não mandou, e o servidor derruba
+   promessa de resultado (`RE_PROMESSA`).
+3. **O navegador monta o plano.** `/plano` recebe `{respostas, ia}` e faz `diagnosticar` + `calendarioDoMes` +
+   `conciliar(ia, narrativaPadrao)`. O link abre em qualquer aparelho e a IA é chamada uma vez por venda.
 4. **Contato não vai para a IA.**
-5. **Leads nunca travam nada** (`registrarLead` roda em `after()` e não lança).
-6. **Banco SQLite na VPS** (`lib/db.ts`, `node:sqlite`): leads, eventos,
-   pedidos, compras e planos. O plano fica no banco com o calendário do mês já
-   calculado (`PlanoCompleto.calendario`), então o link abre em qualquer
-   aparelho e a IA é chamada uma vez por venda.
-7. **Meio de pagamento isolado** em `lib/pagamento.ts` (Kiwify, teste,
-   indisponível).
-8. **Separação do Fôlego**: prefixo `mi-` nas referências, `KIWIFY_PRODUTO`
-   padrão `mes inteiro`, chaves `mesinteiro:*` no navegador, serviço, porta,
-   usuário e banco próprios.
-
-9. **Recuperação de venda** (`lib/recuperacao.ts`): respostas guardadas no
-   fim do quiz (`resultados`), três e-mails (1 h, 24 h, 72 h) para quem não
-   comprou, no máximo um a cada 12 h, parando na compra ou no descadastro
-   (`descadastros`), com registro em `envios`. Janela de 3 dias depois de cada
-   prazo, para o cron parado não mandar e-mail velho.
-10. **Pixel opcional** (`components/Pixel.tsx`): só existe com `META_PIXEL_ID`.
-    `Purchase` só sai quando o plano acabou de ser gerado (menos de 30 min) e
-    uma vez por pedido no aparelho, com `eventID` = referência do pedido.
+5. **Banco** = o SQLite do servidor (`dados/mapa.db`), tabelas `mesinteiro_*`: pedidos, compras (uma linha por
+   `order_id`, com os `skus` plano/acompanhamento), leads, eventos, resultados, envios, descadastros e recup.
+6. **Webhook seguro contra repetição** (upsert por `order_id`, status com peso: pendente/recusado 1, pago 2,
+   reembolsado 3). Em erro, o `servidor.py` devolve 500 e a Kiwify manda de novo.
+7. **Bump** no mesmo aviso ou em aviso separado (liga ao pedido mais recente do mesmo e-mail, 30 dias). Compra sem
+   quiz liga quando a pessoa faz o quiz com o mesmo e-mail.
+8. **Separação dos outros produtos**: prefixo `mi-`, trecho `mes inteiro` (`PRODUTO_MESINTEIRO`), chaves
+   `mesinteiro:*` no navegador, tabelas próprias, remetente próprio (nunca o "responder para" do Meu Santo).
+9. **Recuperação e lembretes** (trabalhador do `mesinteiro.py`, a cada minuto): quiz sem compra (1 h, 24 h,
+   72 h), Pix (60 min), recusado (15 min), carrinho (90 min), compra sem quiz, upsell do Fôlego sem o quiz do
+   Fôlego, acompanhamento semanal do bump e limpeza dos quizzes sem compra depois de 60 dias.
+10. **Configuração do site em `public/config.js`** (pixel, contato, checkout de reserva, upsell): muda sem
+    compilar. Componentes que aparecem no HTML do build leem o `config()` dentro de `useEffect`.
+11. **Pixel opcional**: `Purchase` só quando o plano acabou de sair (menos de 30 min), uma vez por pedido no
+    aparelho, com `eventID` = referência do pedido.
 
 ---
 
@@ -203,25 +202,24 @@ O rascunho fica no `localStorage` (`mesinteiro:quiz`, `VERSAO_RASCUNHO`).
 
 ---
 
-## 6. A IA (`lib/ia.ts`)
+## 6. A IA (`servidor/mesinteiro.py`)
 
-Mesma chamada do Fôlego: `claude-opus-5-5` (ou `ANTHROPIC_MODEL`), streaming,
-saída estruturada por Zod, `effort: "medium"`, fallback do servidor
-(`server-side-fallback-2026-07-01`, `fallbacks: "default"`), 240 s, 1 retry.
+`_chamar_ia`: modelo `MESINTEIRO_MODELO` (padrão `claude-opus-5-5`), chave `MESINTEIRO_ANTHROPIC_API_KEY` (vazia =
+a do Meu Santo), streaming, `output_config` com `effort: "medium"` e `json_schema` (`ESQUEMA`), fallback de
+recusa do lado da API (`server-side-fallback-2026-07-01`). Com `MOCK_IA=1` devolve o texto de
+`mesinteiro_exemplo.json`.
 
-Saída (`Narrativa`): `leitura`, `pontosCriticos` (3), `regrasDoMes` (3–5),
-`ajustes` (um por grupo com ajuste), `primeiros7Dias`, `desafio30Dias`
-(4 semanas), `mensagens` (1–3, para casa, família, cancelar ou baixar conta),
-`proximos90Dias`, `recado`. `conciliar` corta excessos e completa o que faltar
-com a versão padrão.
+Saída: `leitura`, `pontosCriticos` (3), `regrasDoMes` (3–5), `ajustes` (um por grupo com ajuste),
+`primeiros7Dias`, `desafio30Dias` (4 semanas), `mensagens` (1–3), `proximos90Dias`, `recado`. `conferir` (servidor)
+tira markdown, corta excessos e derruba promessa; `conciliar` (navegador) completa com a versão padrão.
 
-O prompt fixa: tom, uso do tipo de mês e de "como se sente", significado dos
-potes e do gasto invisível, só números do JSON, lista fechada de regras legais
-e de canais citáveis, e proibição de indicar bancos, aplicativos, produtos,
-investimentos, crédito ou antecipações.
+O prompt (`SISTEMA`) fixa: tom, uso do tipo de mês e de "como se sente", significado dos potes e do gasto
+invisível, só números do JSON, lista fechada de regras legais e de canais citáveis, e proibição de indicar
+bancos, aplicativos, produtos, investimentos, crédito ou antecipações.
 
-Se mudar a `Narrativa`, mude junto: `tipos.ts`, esquema e prompt em `ia.ts`,
-`conciliar`, `narrativa-padrao.ts` e `PlanoDocumento.tsx`.
+Se mudar a `Narrativa`, mude junto: `lib/tipos.ts`, `SISTEMA`/`ESQUEMA`/`conferir` no `mesinteiro.py`,
+`conciliar` em `lib/ia-dados.ts`, `narrativa-padrao.ts`, `PlanoDocumento.tsx`, e rode
+`ATUALIZAR_EXEMPLO=1 npm test` para atualizar o `servidor/mesinteiro_exemplo.json`.
 
 ---
 
@@ -241,23 +239,26 @@ Se mudar a `Narrativa`, mude junto: `tipos.ts`, esquema e prompt em `ia.ts`,
 
 | Quero mudar | Arquivo |
 | --- | --- |
-| Nome, preço, garantia | `lib/config.ts` |
+| Nome, preço, garantia | `lib/config.ts` (e o preço na Kiwify) |
+| Pixel, contato, checkout de reserva, upsell | `public/config.js` |
 | Perguntas do quiz | `components/Quiz.tsx`, `lib/rotulos.ts`, `lib/tipos.ts`, `lib/validacao.ts` |
 | Regras de cálculo | `lib/diagnostico.ts` |
 | Tipos de mês, primeiro passo, oferta | `lib/perfil.ts` |
 | Calendário do plano | `lib/calendario.ts` |
 | Texto padrão | `lib/narrativa-padrao.ts` |
-| Prompt da IA | `lib/ia.ts` |
+| O que vai para a IA / como o texto dela entra | `lib/ia-dados.ts` |
+| Prompt e formato da IA | `servidor/mesinteiro.py` (`SISTEMA`, `ESQUEMA`, `conferir`) |
+| E-mails (plano, recuperação, lembretes, acompanhamento) | `servidor/mesinteiro.py` |
+| Resumo que o servidor usa nos e-mails | `lib/resumo.ts` |
 | Guia fixo | `lib/guia.ts` |
-| Resultado / plano | `components/Resultado.tsx`, `components/PlanoDocumento.tsx` |
+| Resultado / plano / obrigado | `components/Resultado.tsx`, `PlanoDocumento.tsx`, `TelaPlano.tsx`, `OfertaObrigado.tsx` |
 | Cores | `app/globals.css` |
-| E-mails de recuperação | `lib/recuperacao.ts` |
 | Simulador do resultado | `components/Simulador.tsx` |
-| Pixel | `components/Pixel.tsx`, `lib/pixel.ts` |
-| Kit (criativos, Kiwify, prévia do link) | `scripts/gerar-kit.cjs`, `kit/ANUNCIOS.md` |
+| Contador do funil | `lib/eventos.ts` (e `funil` no `mesinteiro.py`) |
+| Kit (criativos, vídeos, Kiwify, prévia do link) | `scripts/gerar-kit.cjs`, `scripts/gerar-videos.cjs`, `docs/TEXTOS-KIWIFY-E-ANUNCIOS.md` |
 
 **Ao acrescentar uma pergunta**: `tipos.ts`, `rotulos.ts`, `validacao.ts`
 (esquema e objeto normalizado, na ordem), `Quiz.tsx` (tela, validação,
 conversão, `VERSAO_RASCUNHO`), e onde for usada (`diagnostico.ts`,
-`perfil.ts`, `ia.ts`, `leads.ts`, `exemplo.ts`, testes). `Resultado.tsx`
+`perfil.ts`, `ia-dados.ts`, `resumo.ts`, `exemplo.ts`, testes; depois `ATUALIZAR_EXEMPLO=1 npm test`). `Resultado.tsx`
 descarta respostas salvas por versões antigas (`respostasAtuais`).

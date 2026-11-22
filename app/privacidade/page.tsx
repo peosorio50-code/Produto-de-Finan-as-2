@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import { Marca } from "@/components/Marca";
 import { Rodape } from "@/components/Rodape";
+import { EmailContato, SoComPixel } from "@/components/Contato";
 import { MARCA } from "@/lib/config";
 
 export const metadata: Metadata = {
   title: "Privacidade e termos",
 };
 
-export default async function PaginaPrivacidade() {
-  await connection();
+export default function PaginaPrivacidade() {
   return (
     <>
       <header className="documento topo" style={{ paddingBottom: 0 }}>
@@ -38,16 +37,11 @@ export default async function PaginaPrivacidade() {
           <p>
             Para falar com você sobre o seu resultado e sobre o plano completo, por e-mail e WhatsApp.
             Quem termina o quiz e não compra recebe no máximo três e-mails nos dias seguintes: o
-            resultado guardado, o que o plano faz e um último lembrete. Todos têm um link para sair
-            da lista. Para não receber mais mensagens, use esse link, responda a qualquer uma delas
+            resultado guardado, o que o plano faz e um último lembrete. Quem começa o pagamento e não
+            conclui (Pix gerado e não pago, cartão recusado ou pedido pela metade) pode receber um
+            e-mail com o link para concluir. Todos têm um link para sair da lista. Para não receber mais mensagens, use esse link, responda a qualquer uma delas
             pedindo para sair
-            {MARCA.contatoEmail && (
-              <>
-                {" "}
-                ou escreva para <a href={`mailto:${MARCA.contatoEmail}`}>{MARCA.contatoEmail}</a>
-              </>
-            )}
-            . Não vendemos nem cedemos seu contato a outras empresas.
+            <EmailContato antes=" ou escreva para " />. Não vendemos nem cedemos seu contato a outras empresas.
           </p>
         </section>
 
@@ -71,13 +65,20 @@ export default async function PaginaPrivacidade() {
             artificial.
           </p>
           <p>
+            As respostas do quiz de quem não compra são apagadas do servidor depois de 60 dias. Os
+            e-mails são enviados pela Resend, um serviço de envio de e-mails. Para contar quantas
+            pessoas passam por cada etapa do site, registramos também etapas como &ldquo;abriu a
+            página&rdquo; e &ldquo;terminou o quiz&rdquo;, com um código aleatório de visita e sem
+            nenhum dado pessoal.
+          </p>
+          <p>
             Para apagar o que fica no seu aparelho, limpe os dados de navegação deste site nas
             configurações do seu navegador. Para apagar o que fica no nosso servidor, peça pelo canal
             indicado em &ldquo;Seus direitos sobre os dados&rdquo;.
           </p>
         </section>
 
-        {process.env.META_PIXEL_ID && (
+        <SoComPixel>
           <section className="bloco">
             <h2 className="titulo-3">Anúncios e medição</h2>
             <p>
@@ -89,7 +90,7 @@ export default async function PaginaPrivacidade() {
               navegador.
             </p>
           </section>
-        )}
+        </SoComPixel>
 
         <section className="bloco">
           <h2 className="titulo-3">Pagamento</h2>
@@ -106,13 +107,7 @@ export default async function PaginaPrivacidade() {
           <p>
             Quem compra o plano completo tem {MARCA.garantiaDias} dias, a contar da compra, para pedir
             a devolução integral do valor, sem precisar explicar o motivo.
-            {MARCA.contatoEmail && (
-              <>
-                {" "}
-                Escreva para <a href={`mailto:${MARCA.contatoEmail}`}>{MARCA.contatoEmail}</a> pelo mesmo
-                e-mail usado no pagamento.
-              </>
-            )}
+            <EmailContato antes=" Escreva para " depois=" pelo mesmo e-mail usado no pagamento." />
           </p>
         </section>
 
@@ -137,13 +132,7 @@ export default async function PaginaPrivacidade() {
             Pela Lei Geral de Proteção de Dados, você pode pedir acesso, correção ou exclusão dos seus
             dados. O que temos é o seu contato, as respostas e o resumo do resultado do quiz e os
             registros de pagamento.
-            {MARCA.contatoEmail && (
-              <>
-                {" "}
-                Para qualquer pedido, escreva para{" "}
-                <a href={`mailto:${MARCA.contatoEmail}`}>{MARCA.contatoEmail}</a>.
-              </>
-            )}
+            <EmailContato antes=" Para qualquer pedido, escreva para " depois="." />
           </p>
         </section>
       </main>

@@ -1819,3 +1819,29 @@ select {
     text-decoration: none;
   }
 }
+
+/* ---------- Oferta da página de obrigado (upsell de 1 clique) ---------- */
+
+.oferta-obrigado {
+  margin-top: 1.5rem;
+  padding: 1.5rem 1.25rem;
+  border: 2px solid var(--verde);
+  border-radius: var(--raio);
+  background: var(--papel);
+  display: grid;
+  gap: 0.75rem;
+}
+
+.oferta-obrigado__preco {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.5rem 0.875rem;
+  text-align: center;
+}
+
+.oferta-obrigado__preco strong {
+  font-size: 1.75rem;
+  color: var(--verde-forte);
+}

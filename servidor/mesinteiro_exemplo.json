@@ -1,0 +1,451 @@
+{
+ "respostas": {
+  "nome": "Ana",
+  "quandoAcaba": "ultima_semana",
+  "pessoasNaCasa": 3,
+  "tipoRenda": "fixa",
+  "rendaMensal": 3200,
+  "recebimento": "inicio",
+  "gastos": {
+   "moradia": 950,
+   "contas": 290,
+   "transporte": 220,
+   "saude_educacao": 150,
+   "assinaturas": 110,
+   "mercado": 750,
+   "comer_fora": 420,
+   "compras_lazer": 280,
+   "outros": 150
+  },
+  "parcelas": {
+   "cartao": 380,
+   "emprestimos": 0
+  },
+  "fatura": "minimo_ou_parcela",
+  "comoFecha": [
+   "cartao"
+  ],
+  "vazamentos": [
+   "assinaturas",
+   "delivery"
+  ],
+  "controle": "as_vezes",
+  "reserva": "nenhuma",
+  "sentimento": "cansado",
+  "objetivo": "sair_do_cartao"
+ },
+ "resumo": {
+  "perfil": "Fim de mês no cartão",
+  "perfilId": "fim_de_mes_no_cartao",
+  "resumoPerfil": "Faltam cerca de R$ 500 por mês, e essa diferença vai para o cartão. É assim que o fim do mês de hoje começa a comer o salário do mês que vem.",
+  "primeiroPasso": {
+   "titulo": "Tire o cartão do dia a dia",
+   "texto": "Deixe no cartão só o que já está nele. Mercado, lanche e corrida passam para o débito ou o Pix, com um valor fixo por semana. É o que impede o mês de hoje de pegar dinheiro do mês que vem."
+  },
+  "nivel": 3,
+  "nivelRotulo": "Apertado",
+  "renda": 3200,
+  "contasFixas": 1720,
+  "diaADia": 1600,
+  "parcelas": 380,
+  "gastoInvisivel": 0,
+  "sobraMes": -500,
+  "comprometimento": 0.656,
+  "diaQueAcaba": 20,
+  "diaComPlano": null,
+  "ajustesTotal": 510,
+  "livrePorSemana": 275,
+  "guardarPorMes": 0,
+  "maiorVazamento": {
+   "rotulo": "Delivery e lanches",
+   "porMes": 420,
+   "porAno": 5040
+  },
+  "sinaisDeDivida": true,
+  "quandoAcaba": "Na última semana",
+  "comoFecha": [
+   "Passo no cartão de crédito"
+  ],
+  "vazamentos": [
+   "Assinaturas que quase não uso",
+   "Delivery e lanches"
+  ],
+  "reserva": "Nenhuma",
+  "objetivo": "Parar de usar o cartão para fechar o mês",
+  "sentimento": "Cansado de viver no aperto",
+  "desafio": [
+   {
+    "semana": "Semana 1",
+    "foco": "Enxergar",
+    "acoes": [
+     "Anote todos os gastos, sem julgar nenhum.",
+     "Crie os potes e separe o dinheiro de cada um.",
+     "Viva a semana com R$ 275 no dia a dia."
+    ]
+   },
+   {
+    "semana": "Semana 2",
+    "foco": "Cortar o que não faz falta",
+    "acoes": [
+     "Cancele as assinaturas e os serviços que ninguém usa.",
+     "Coloque em prática a meta de delivery e lanches: até R$ 210 no mês."
+    ]
+   },
+   {
+    "semana": "Semana 3",
+    "foco": "Segurar o ritmo",
+    "acoes": [
+     "Nenhuma compra nova no crédito.",
+     "Use a regra das 48 horas para tudo o que não estava na lista.",
+     "Confira se a semana fechou dentro do valor e anote onde estourou."
+    ]
+   },
+   {
+    "semana": "Semana 4",
+    "foco": "Fechar o mês",
+    "acoes": [
+     "Confira os quatro potes e anote o grupo que mais estourou.",
+     "Ajuste as metas do próximo mês com o que você aprendeu.",
+     "No próximo pagamento, separe o futuro antes de tudo."
+    ]
+   }
+  ]
+ },
+ "dadosIA": {
+  "resultadoDoQuiz": {
+   "perfil": "Fim de mês no cartão",
+   "resumo": "Faltam cerca de R$ 500 por mês, e essa diferença vai para o cartão. É assim que o fim do mês de hoje começa a comer o salário do mês que vem."
+  },
+  "cliente": {
+   "nome": "Ana",
+   "pessoasNaCasa": 3,
+   "renda": "Fixa (salário, aposentadoria ou pensão)",
+   "comoODinheiroEntra": "Uma vez por mês, no começo do mês",
+   "quandoODinheiroAcaba": "Na última semana",
+   "comoFechaOMes": [
+    "Passo no cartão de crédito"
+   ],
+   "ondeODinheiroEscapa": [
+    "Assinaturas que quase não uso",
+    "Delivery e lanches"
+   ],
+   "faturaDoCartao": "Às vezes pago o mínimo ou parcelo a fatura",
+   "controleDosGastos": "Anoto de vez em quando",
+   "reserva": "Nenhuma",
+   "comoSeSente": "Cansado de viver no aperto",
+   "objetivo": "Parar de usar o cartão para fechar o mês"
+  },
+  "raioX": {
+   "nivel": 3,
+   "nivelRotulo": "Apertado",
+   "rendaMensal": 3200,
+   "contasFixas": 1720,
+   "parcelas": 380,
+   "diaADia": 1600,
+   "gastoInvisivel": 0,
+   "totalDoMes": 3700,
+   "sobraDoMes": -500,
+   "parteDoSalarioQueJaChegaComDestino": "66%",
+   "diaEmQueODinheiroAcaba": 20,
+   "diaPelasContasInformadas": 20,
+   "contasNaoBatem": false,
+   "sinais": {
+    "contaNaoFecha": true,
+    "fechaNoCredito": true,
+    "salarioComprometido": false,
+    "temGastoInvisivel": false,
+    "rendaVariavel": false,
+    "semReserva": true,
+    "semControle": false,
+    "apostas": false,
+    "ajudaFamilia": false,
+    "faturaAtrasada": false,
+    "pagaMinimoDaFatura": true,
+    "parcelasAltas": false
+   }
+  },
+  "plano": {
+   "potes": {
+    "contas": 1630,
+    "parcelas": 380,
+    "dia_a_dia": 1190,
+    "futuro": 0
+   },
+   "livrePorSemana": 275,
+   "guardarPorMes": 0,
+   "ajustesPorMes": 510,
+   "faltaComAjustes": 0,
+   "diaEmQueODinheiroAcabaComOPlano": "dura o mês inteiro",
+   "metasDeReserva": [
+    {
+     "meta": "Colchão para imprevistos",
+     "valor": 800,
+     "mesesNoRitmoDoPlano": null
+    },
+    {
+     "meta": "Um mês do essencial",
+     "valor": 2700,
+     "mesesNoRitmoDoPlano": null
+    },
+    {
+     "meta": "Três meses do essencial",
+     "valor": 8100,
+     "mesesNoRitmoDoPlano": null
+    }
+   ],
+   "em12Meses": {
+    "ritmoAtual": -6000,
+    "plano": 0
+   }
+  },
+  "vazamentos": [
+   {
+    "grupo": "Delivery e lanches",
+    "porMes": 420,
+    "porAno": 5040,
+    "apontadoPelaPessoa": true
+   },
+   {
+    "grupo": "Compras e lazer",
+    "porMes": 280,
+    "porAno": 3360,
+    "apontadoPelaPessoa": false
+   },
+   {
+    "grupo": "Assinaturas",
+    "porMes": 110,
+    "porAno": 1320,
+    "apontadoPelaPessoa": true
+   }
+  ],
+  "orcamento": [
+   {
+    "grupo": "Moradia",
+    "tipo": "conta fixa",
+    "gastoAtual": 950,
+    "parteDaRenda": "30%",
+    "acimaDoComum": false,
+    "apontadoPelaPessoa": false,
+    "ajuste": 0,
+    "meta": 950
+   },
+   {
+    "grupo": "Contas da casa",
+    "tipo": "conta fixa",
+    "gastoAtual": 290,
+    "parteDaRenda": "9%",
+    "acimaDoComum": false,
+    "apontadoPelaPessoa": false,
+    "ajuste": 20,
+    "meta": 270
+   },
+   {
+    "grupo": "Transporte",
+    "tipo": "conta fixa",
+    "gastoAtual": 220,
+    "parteDaRenda": "7%",
+    "acimaDoComum": false,
+    "apontadoPelaPessoa": false,
+    "ajuste": 20,
+    "meta": 200
+   },
+   {
+    "grupo": "Saúde e educação",
+    "tipo": "conta fixa",
+    "gastoAtual": 150,
+    "parteDaRenda": "5%",
+    "acimaDoComum": false,
+    "apontadoPelaPessoa": false,
+    "ajuste": 0,
+    "meta": 150
+   },
+   {
+    "grupo": "Assinaturas",
+    "tipo": "conta fixa",
+    "gastoAtual": 110,
+    "parteDaRenda": "3%",
+    "acimaDoComum": true,
+    "apontadoPelaPessoa": true,
+    "ajuste": 50,
+    "meta": 60
+   },
+   {
+    "grupo": "Mercado e feira",
+    "tipo": "dia a dia",
+    "gastoAtual": 750,
+    "parteDaRenda": "23%",
+    "acimaDoComum": true,
+    "apontadoPelaPessoa": false,
+    "ajuste": 70,
+    "meta": 680
+   },
+   {
+    "grupo": "Delivery e lanches",
+    "tipo": "dia a dia",
+    "gastoAtual": 420,
+    "parteDaRenda": "13%",
+    "acimaDoComum": true,
+    "apontadoPelaPessoa": true,
+    "ajuste": 210,
+    "meta": 210
+   },
+   {
+    "grupo": "Compras e lazer",
+    "tipo": "dia a dia",
+    "gastoAtual": 280,
+    "parteDaRenda": "9%",
+    "acimaDoComum": true,
+    "apontadoPelaPessoa": false,
+    "ajuste": 110,
+    "meta": 170
+   },
+   {
+    "grupo": "Outros gastos",
+    "tipo": "dia a dia",
+    "gastoAtual": 150,
+    "parteDaRenda": "5%",
+    "acimaDoComum": false,
+    "apontadoPelaPessoa": false,
+    "ajuste": 30,
+    "meta": 120
+   }
+  ]
+ },
+ "ia": {
+  "leitura": [
+   "Ana, entram R$ 3.200 por mês e saem cerca de R$ 3.700: o dinheiro dura até mais ou menos o dia 20. Do que entra, 66% já chega com destino certo, entre contas fixas e parcelas.",
+   "Quando o dinheiro acaba, a diferença vai para o cartão. Assim o mês seguinte começa com uma conta a mais, e é por isso que o aperto se repete.",
+   "Com o plano, o salário é dividido em quatro potes no dia em que entra: R$ 1.630 para as contas fixas, R$ 380 para as parcelas, R$ 1.190 para o dia a dia (R$ 275 por semana) e o futuro começa assim que o mês fechar com sobra. Os ajustes somam R$ 510 por mês, e o dinheiro passa a chegar ao dia 30."
+  ],
+  "pontosCriticos": [
+   {
+    "titulo": "O fim do mês no crédito",
+    "explicacao": "Faltam cerca de R$ 500 por mês, e a diferença vai para o cartão. Cada mês que fecha assim faz o próximo começar devendo."
+   },
+   {
+    "titulo": "O mínimo da fatura",
+    "explicacao": "Pagar o mínimo ou parcelar a fatura joga o resto nos juros mais caros do mercado. É o atalho que mais encarece o mês seguinte."
+   },
+   {
+    "titulo": "Delivery e lanches pesa",
+    "explicacao": "São R$ 420 por mês, ou R$ 5.040 por ano. É o gasto do dia a dia que mais pesa no seu mês."
+   }
+  ],
+  "regrasDoMes": [
+   {
+    "regra": "O futuro sai primeiro",
+    "porque": "Assim que o mês fechar com sobra, o dinheiro do futuro sai no dia do pagamento, antes de qualquer gasto."
+   },
+   {
+    "regra": "R$ 275 por semana, e acabou",
+    "porque": "O dia a dia vira um valor por semana. Se acabar na quinta, a sexta é de aperto, não de cartão."
+   },
+   {
+    "regra": "Cartão só para o que já está nele",
+    "porque": "Nenhuma compra nova no crédito até a fatura caber inteira no mês."
+   },
+   {
+    "regra": "Nenhuma parcela nova",
+    "porque": "Até as parcelas de hoje terminarem, compra nova é à vista ou espera."
+   },
+   {
+    "regra": "Delivery e lanches: até R$ 210 por mês",
+    "porque": "É a meta do plano para o gasto que mais pesa. Chegou no teto, acabou até o mês seguinte."
+   }
+  ],
+  "ajustes": [
+   {
+    "categoria": "Contas da casa",
+    "sugestao": "Hoje: R$ 290 por mês. Meta: R$ 270. Reveja o plano de celular e de internet, peça a tarifa social de energia se tiver direito e desligue da tomada o que fica ligado à toa."
+   },
+   {
+    "categoria": "Transporte",
+    "sugestao": "Hoje: R$ 220 por mês. Meta: R$ 200. Junte saídas no mesmo dia, compare o custo do carro com o do transporte público e confira se o vale-transporte cobre mais trechos."
+   },
+   {
+    "categoria": "Assinaturas",
+    "sugestao": "Hoje: R$ 110 por mês. Meta: R$ 60. Liste todas as assinaturas que aparecem no extrato e na fatura. Fique só com as que você usou na última semana e cancele as outras hoje."
+   },
+   {
+    "categoria": "Mercado e feira",
+    "sugestao": "Hoje: R$ 750 por mês. Meta: R$ 680. Cardápio da semana, lista fechada e uma compra grande no mês, com reposição só de frescos. Ir menos vezes ao mercado é o que mais economiza."
+   },
+   {
+    "categoria": "Delivery e lanches",
+    "sugestao": "Hoje: R$ 420 por mês. Meta: R$ 210. Escolha os dias do delivery (por exemplo, só no sábado) e leve marmita ou lanche de casa nos dias úteis. Apague o cartão salvo nos aplicativos."
+   },
+   {
+    "categoria": "Compras e lazer",
+    "sugestao": "Hoje: R$ 280 por mês. Meta: R$ 170. Lazer com valor fixo no mês, compras só da lista e 48 horas de espera para tudo o que não estava nela. Tire o cartão salvo das lojas online."
+   },
+   {
+    "categoria": "Outros gastos",
+    "sugestao": "Hoje: R$ 150 por mês. Meta: R$ 120. Olhe o extrato com calma: corridas de aplicativo, beleza e pequenas ajudas somam rápido. Dê um teto para cada um."
+   }
+  ],
+  "primeiros7Dias": [
+   "Abra o extrato do banco e a fatura do cartão dos últimos dois meses e confira se os valores deste plano estão perto do real.",
+   "Crie os potes: caixinhas no aplicativo do banco (ou contas separadas) para as contas fixas, o dia a dia e o futuro.",
+   "Cancele as assinaturas que você não usou na última semana.",
+   "Apague o cartão de crédito salvo nos aplicativos de delivery, transporte e compras.",
+   "Na segunda-feira, passe R$ 275 para o dia a dia da semana e use só esse valor."
+  ],
+  "desafio30Dias": [
+   {
+    "semana": "Semana 1",
+    "foco": "Enxergar",
+    "acoes": [
+     "Anote todos os gastos, sem julgar nenhum.",
+     "Crie os potes e separe o dinheiro de cada um.",
+     "Viva a semana com R$ 275 no dia a dia."
+    ]
+   },
+   {
+    "semana": "Semana 2",
+    "foco": "Cortar o que não faz falta",
+    "acoes": [
+     "Cancele as assinaturas e os serviços que ninguém usa.",
+     "Coloque em prática a meta de delivery e lanches: até R$ 210 no mês."
+    ]
+   },
+   {
+    "semana": "Semana 3",
+    "foco": "Segurar o ritmo",
+    "acoes": [
+     "Nenhuma compra nova no crédito.",
+     "Use a regra das 48 horas para tudo o que não estava na lista.",
+     "Confira se a semana fechou dentro do valor e anote onde estourou."
+    ]
+   },
+   {
+    "semana": "Semana 4",
+    "foco": "Fechar o mês",
+    "acoes": [
+     "Confira os quatro potes e anote o grupo que mais estourou.",
+     "Ajuste as metas do próximo mês com o que você aprendeu.",
+     "No próximo pagamento, separe o futuro antes de tudo."
+    ]
+   }
+  ],
+  "mensagens": [
+   {
+    "titulo": "Para combinar com quem mora com você",
+    "texto": "Queria combinar uma coisa com você. Fiz as contas do nosso mês: entram R$ 3.200 e o dinheiro acaba por volta do dia 20. Montei um plano: R$ 275 por semana para o dia a dia da casa. Topa tentar por 30 dias? No fim do mês a gente senta e vê o que funcionou."
+   },
+   {
+    "titulo": "Para cancelar uma assinatura",
+    "texto": "Olá. Quero cancelar a assinatura do serviço [nome do serviço], vinculada ao e-mail [seu e-mail], com efeito imediato. Peço a confirmação do cancelamento e o número de protocolo."
+   },
+   {
+    "titulo": "Para baixar a conta do celular ou da internet",
+    "texto": "Olá. Sou cliente há [tempo] e quero baixar o valor do meu plano. Quais opções vocês têm por um valor menor? Se não houver, vou avaliar a portabilidade para outra operadora."
+   }
+  ],
+  "proximos90Dias": [
+   "No segundo mês, repita os potes e compare: o grupo que estourou ganha uma meta mais realista, não uma bronca.",
+   "A cada mês, a fatura do cartão precisa vir menor que a anterior. Quando ela couber inteira no mês, o cartão volta a ser só um meio de pagamento.",
+   "No terceiro mês, revise as metas: o que ficou fácil pode apertar um pouco, e o que ficou impossível precisa afrouxar."
+  ],
+  "recado": "Você quer parar de fechar o mês no cartão: cada mês em que a fatura vem menor é um passo concreto nessa direção. Um mês de cada vez é suficiente. (texto de teste)"
+ }
+}

@@ -62,9 +62,8 @@ const esquema = z.object({
 
 /**
  * Valida e normaliza as respostas vindas do navegador. Devolve um objeto com
- * as chaves sempre na mesma ordem e as listas ordenadas: o pedido é amarrado
- * ao hash dele (lib/pedido.ts), então qualquer mudança aqui invalida pedidos
- * já feitos.
+ * as chaves sempre na mesma ordem e as listas ordenadas. Roda no navegador,
+ * antes do checkout e ao abrir o resultado pelo link dos e-mails.
  */
 export function sanitizarRespostas(entrada: unknown): Respostas | null {
   const resultado = esquema.safeParse(entrada);

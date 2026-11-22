@@ -1,9 +1,9 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { telefoneValido } from "@/lib/contato";
 import { diagnosticar } from "@/lib/diagnostico";
 import { EXEMPLO } from "@/lib/exemplo";
 import { brl, mascaraTelefone } from "@/lib/formato";
-import { enviarLead, montarLead, resumirParaLead } from "@/lib/leads";
+import { resumoParaServidor } from "@/lib/resumo";
 import { itensDoPlano, perfilDaSituacao, primeiroPasso } from "@/lib/perfil";
 import type { Respostas } from "@/lib/tipos";
 import { sanitizarContato, sanitizarOrigem, sanitizarRespostas } from "@/lib/validacao";
@@ -97,55 +97,14 @@ describe("tipo de mês", () => {
   });
 });
 
-describe("leads", () => {
-  afterEach(() => {
-    vi.unstubAllEnvs();
-    vi.unstubAllGlobals();
-  });
-
-  it("monta o lead com contato, origem e resumo do resultado", () => {
+describe("resumo que vai para o servidor", () => {
+  it("leva o perfil, o dia em que o dinheiro acaba e os vazamentos, sem contato", () => {
     const r = respostas();
-    const lead = montarLead({
-      evento: "quiz_concluido",
-      contato: CONTATO,
-      origem: { utm_source: "meta" },
-      resultado: resumirParaLead(r, diagnosticar(r)),
-    });
-    expect(lead.produto).toBe("Mês Inteiro");
-    expect(lead.contato.primeiroNome).toBe("Ana");
-    expect(lead.contato.whatsapp).toBe("5511912345678");
-    expect(lead.origem.utm_source).toBe("meta");
-    expect(lead.resultado?.perfil).toBe("Fim de mês no cartão");
-    expect(lead.resultado?.diaQueAcaba).toBe(20);
-    expect(lead.resultado?.vazamentos).toContain("Delivery e lanches");
-    expect(lead.pedido).toBeUndefined();
-  });
-
-  it("envia ao webhook com o token, e não quebra quando ele falha", async () => {
-    vi.stubEnv("LEADS_WEBHOOK_URL", "https://hooks.exemplo.com/mesinteiro");
-    vi.stubEnv("LEADS_WEBHOOK_TOKEN", "segredo");
-    const chamadas: { url: string; init: RequestInit }[] = [];
-    vi.stubGlobal("fetch", async (url: string, init: RequestInit) => {
-      chamadas.push({ url, init });
-      return new Response("ok");
-    });
-    const lead = montarLead({ evento: "quiz_iniciado", contato: CONTATO });
-    expect(await enviarLead(lead)).toBe(true);
-    expect(chamadas[0].url).toBe("https://hooks.exemplo.com/mesinteiro");
-    expect((chamadas[0].init.headers as Record<string, string>).Authorization).toBe("Bearer segredo");
-    expect(JSON.parse(String(chamadas[0].init.body)).evento).toBe("quiz_iniciado");
-
-    vi.stubGlobal("fetch", async () => {
-      throw new Error("fora do ar");
-    });
-    expect(await enviarLead(lead)).toBe(false);
-  });
-
-  it("sem webhook configurado, não chama a rede", async () => {
-    vi.stubEnv("LEADS_WEBHOOK_URL", "");
-    vi.stubGlobal("fetch", async () => {
-      throw new Error("não deveria chamar a rede");
-    });
-    expect(await enviarLead(montarLead({ evento: "quiz_iniciado", contato: CONTATO }))).toBe(false);
+    const resumo = resumoParaServidor(r, diagnosticar(r));
+    expect(resumo.perfil).toBe("Fim de mês no cartão");
+    expect(resumo.diaQueAcaba).toBe(20);
+    expect(resumo.vazamentos).toContain("Delivery e lanches");
+    expect(resumo.sinaisDeDivida).toBe(true);
+    expect(JSON.stringify(resumo)).not.toContain(CONTATO.email);
   });
 });

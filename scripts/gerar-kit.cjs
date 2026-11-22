@@ -5,8 +5,9 @@
  *
  *   npm run kit
  *
- * - kit/kiwify/   imagem do produto (1000x1000) e banners do checkout
- * - kit/criativos/ 10 anúncios estáticos 4:5 (1080x1350) e uma folha com todos
+ * - kit/kiwify/   imagem do produto e do bump (1000x1000) e banners do checkout
+ * - kit/criativos/ 12 anúncios estáticos 4:5 (1080x1350) e uma folha com todos
+ *   (os vídeos 9:16 saem de scripts/gerar-videos.cjs: npm run kit:videos)
  * - app/opengraph-image.png  imagem da prévia do link (WhatsApp, Facebook...)
  * - app/apple-icon.png       ícone da tela inicial do iPhone
  *
@@ -26,98 +27,7 @@ try {
   process.exit(1);
 }
 
-const RAIZ = resolve(__dirname, "..");
-const TMP = join(RAIZ, "kit", ".tmp");
-const fonte = (pacote, arquivo) => pathToFileURL(join(RAIZ, "node_modules/@fontsource-variable", pacote, "files", arquivo)).href;
-
-/* ---------- Estilo comum ---------- */
-
-const CSS = `
-@font-face { font-family: "Bricolage"; src: url("${fonte("bricolage-grotesque", "bricolage-grotesque-latin-wdth-normal.woff2")}") format("woff2"); font-weight: 200 800; font-stretch: 75% 100%; }
-@font-face { font-family: "Figtree"; src: url("${fonte("figtree", "figtree-latin-wght-normal.woff2")}") format("woff2"); font-weight: 300 900; }
-@font-face { font-family: "Caveat"; src: url("${fonte("caveat", "caveat-latin-wght-normal.woff2")}") format("woff2"); font-weight: 400 700; }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-:root { --tinta:#10221a; --grafite:#56645c; --verde:#0e7a4e; --verde-forte:#0a5c3a; --verde-fundo:#e2f3e9; --vermelho:#c8372a;
-  --vermelho-fundo:#fcebe8; --risco:#f4cdc6; --linha:#d5dfd8; --grifo:#ffe45e; --fundo:#eaf3ed; }
-html, body { width: 100%; height: 100%; overflow: hidden; }
-body { font-family: "Figtree", sans-serif; color: var(--tinta); background-color: var(--fundo);
-  background-image: linear-gradient(rgba(14,122,78,.075) 1px, transparent 1px), linear-gradient(90deg, rgba(14,122,78,.075) 1px, transparent 1px);
-  background-size: 44px 44px; -webkit-font-smoothing: antialiased; }
-.quadro { position: absolute; inset: 0; padding: 76px 68px 58px; display: flex; flex-direction: column; }
-.titulo { font-family: "Bricolage"; font-weight: 800; font-stretch: 88%; font-size: 92px; line-height: .98; letter-spacing: -.035em; }
-.grifo { background: linear-gradient(var(--grifo), var(--grifo)) no-repeat 0 72% / 100% .58em; padding: 0 .06em; margin: 0 -.06em;
-  -webkit-box-decoration-break: clone; box-decoration-break: clone; }
-.sobre { font-size: 26px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--verde); margin-bottom: 22px; }
-.sub { font-size: 32px; color: var(--grafite); margin-top: 24px; line-height: 1.35; }
-.miolo { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 34px 0 10px; }
-.nota { font-size: 27px; color: var(--grafite); line-height: 1.4; margin-top: 34px; }
-.minusculo { font-size: 19px; color: var(--grafite); margin-top: 14px; }
-.rodape { display: flex; align-items: flex-end; justify-content: space-between; }
-.marca { font-family: "Bricolage"; font-weight: 800; font-size: 46px; letter-spacing: -.035em; line-height: 1; display: inline-flex; flex-direction: column; align-self: flex-start; }
-.marca svg { width: 100%; height: 12px; margin-top: 4px; color: var(--verde); }
-.dominio { font-size: 20px; color: var(--grafite); margin-top: 12px; }
-.cta { background: var(--verde); color: #fff; font-family: "Bricolage"; font-weight: 800; font-size: 31px; padding: 22px 36px; border-radius: 999px; }
-.cartao { background: #fff; border-radius: 24px; padding: 42px; box-shadow: 0 2px 0 var(--linha), 0 34px 70px -34px rgba(16,34,26,.4); }
-.inclinado { transform: rotate(-1deg); }
-.caneta { font-family: "Caveat"; font-weight: 700; font-size: 46px; line-height: 1.05; color: var(--verde); }
-.caneta.vermelho { color: var(--vermelho); }
-.cab { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 18px; margin-bottom: 24px; border-bottom: 3px solid var(--tinta); font-size: 28px; }
-.cab b { font-family: "Bricolage"; font-weight: 700; letter-spacing: -.01em; }
-.cab span { color: var(--grafite); font-size: 22px; }
-.grade { display: grid; grid-template-columns: repeat(10, 1fr); gap: 9px; }
-.dia { position: relative; aspect-ratio: 1; display: grid; place-items: center; border-radius: 9px; font-size: 23px; font-weight: 700; }
-.dia.ok { background: var(--verde-fundo); color: var(--verde-forte); }
-.dia.nao { background: repeating-linear-gradient(-45deg, var(--vermelho-fundo) 0 7px, var(--risco) 7px 11px); color: var(--vermelho); }
-.dia.fim::after { content: ""; position: absolute; inset: -9px; border: 4px solid var(--vermelho); border-radius: 51% 49% 54% 46% / 47% 55% 45% 53%; transform: rotate(-8deg); }
-.linha { display: flex; align-items: baseline; gap: 14px; padding: 20px 0; border-bottom: 2px dashed var(--linha); font-size: 32px; }
-.linha .pontos { flex: 1; border-bottom: 3px dotted var(--linha); transform: translateY(-8px); }
-.linha:last-child { border-bottom: 0; }
-.num { font-variant-numeric: tabular-nums; white-space: nowrap; font-weight: 700; }
-.verde { color: var(--verde); } .vermelho { color: var(--vermelho); }
-.opcao { display: flex; align-items: center; gap: 22px; background: #fff; border: 3px solid var(--linha); border-radius: 18px; padding: 24px 28px; font-size: 32px; font-weight: 600; margin-top: 16px; }
-.opcao i { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--grafite); flex: none; }
-.opcao.marcada { border-color: var(--verde); background: var(--verde-fundo); }
-.opcao.marcada i { border-color: var(--verde); background: var(--verde) radial-gradient(circle, #fff 0 5px, transparent 6px); }
-.potes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-.pote { background: #fff; border-radius: 20px; padding: 28px 30px 30px; border-top: 16px solid var(--tinta); box-shadow: 0 2px 0 var(--linha), 0 24px 50px -30px rgba(16,34,26,.35); }
-.pote b { display: block; font-size: 30px; }
-.pote span { display: block; font-family: "Bricolage"; font-weight: 800; font-size: 58px; letter-spacing: -.03em; margin-top: 8px; }
-.pote small { display: block; font-size: 22px; color: var(--grafite); margin-top: 6px; }
-.pote.parcelas { border-top-color: var(--grafite); } .pote.dia-a-dia { border-top-color: var(--verde); }
-.pote.futuro { border-top-color: var(--verde-forte); background: var(--verde-fundo); }
-.chip { display: inline-block; font-family: "Bricolage"; font-weight: 700; font-size: 38px; letter-spacing: -.015em; padding: 18px 28px; border-radius: 16px;
-  background: #fff; box-shadow: 0 2px 0 var(--linha), 0 18px 30px -22px rgba(16,34,26,.35); margin: 0 14px 18px 0; }
-.chip.amarelo { background: var(--grifo); } .chip.verde { background: var(--verde); color: #fff; }
-.selo { background: var(--tinta); color: #fff; border-radius: 22px; padding: 22px 30px; text-align: center; font-family: "Bricolage"; font-weight: 800; line-height: 1.05; }
-`;
-
-const RISCO = `<svg viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true"><path d="M2 5.5 C 20 1.5, 38 7, 55 4 S 86 2, 98 4.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" vector-effect="non-scaling-stroke"/></svg>`;
-const marca = (tamanho = 46) => `<span class="marca" style="font-size:${tamanho}px">Mês Inteiro${RISCO}</span>`;
-const rodape = `<div class="rodape"><div>${marca()}<p class="dominio">mesinteiro.folegofinanceiro.shop</p></div><span class="cta">Faça o quiz grátis →</span></div>`;
-
-function calendario(ate, { tamanho = 23 } = {}) {
-  let dias = "";
-  for (let d = 1; d <= 30; d++) {
-    const classe = d <= ate ? "ok" : "nao";
-    dias += `<div class="dia ${classe}${d === ate ? " fim" : ""}" style="font-size:${tamanho}px">${d}</div>`;
-  }
-  return `<div class="grade">${dias}</div>`;
-}
-
-const criativo = (titulo, miolo, extra = "") => `<div class="quadro">${extra}<h1 class="titulo">${titulo}</h1><div class="miolo">${miolo}</div>${rodape}</div>`;
-
-/* ---------- Exemplos (casos fictícios calculados pelo motor do site) ---------- */
-
-// lib/exemplo.ts: salário de R$ 3.200, o dinheiro acaba no dia 20.
-const EX = { renda: "R$ 3.200", dia: 20, delivery: "R$ 420", deliveryAno: "R$ 5.040", compras: "R$ 280", comprasAno: "R$ 3.360" };
-// Caso dos potes: um mês que fecha com R$ 160 guardados.
-const POTES = [
-  ["contas", "Contas fixas", "R$ 1.540", "Sai no dia do pagamento"],
-  ["parcelas", "Parcelas", "R$ 380", "Nenhuma parcela nova"],
-  ["dia-a-dia", "Dia a dia", "R$ 1.120", "Dividido por semana"],
-  ["futuro", "Futuro", "R$ 160", "Separado antes de tudo"],
-];
-const SEMANA = "R$ 260";
+const { RAIZ, TMP, CSS, RISCO, marca, rodape, calendario, criativo, EX, POTES, SEMANA } = require("./kit-base.cjs");
 
 /* ---------- Peças ---------- */
 
@@ -241,6 +151,69 @@ peca("kit/criativos/10-a-conta.png", 1080, 1350, criativo(
    <p class="nota">O quiz faz essa conta em 3 minutos, de graça, e mostra para onde vai o resto.</p>`,
 ));
 
+/* Conjunto B (produto) e cena de conversa */
+
+peca("kit/criativos/11-produto-preco.png", 1080, 1350, `<div class="quadro">
+  <p class="sobre">Plano do Mês Inteiro</p>
+  <h1 class="titulo" style="font-size:84px">O salário dividido <span class="grifo">antes de ser gasto</span></h1>
+  <div class="miolo" style="padding-top:28px">
+    <div class="cartao inclinado" style="padding:40px 44px">
+      ${["O salário em quatro potes, com os seus números", "Quanto dá para gastar por semana", "Onde ajustar, grupo por grupo", "O calendário do mês e lembretes no celular", "Regras, reserva e desafio de 30 dias"]
+        .map((item) => `<div style="display:flex;gap:18px;align-items:flex-start;font-size:31px;line-height:1.3;padding:11px 0"><svg width="34" height="34" viewBox="0 0 24 24" style="flex:none;margin-top:3px"><circle cx="12" cy="12" r="12" fill="#0e7a4e"/><path d="m7 12.5 3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>${item}</span></div>`).join("")}
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-top:3px solid var(--tinta);margin-top:22px;padding-top:24px">
+        <span style="font-size:28px;color:var(--grafite)">Pagamento único</span>
+        <span style="font-family:Bricolage;font-weight:800;font-size:92px;letter-spacing:-.04em;line-height:1;color:var(--verde-forte)">R$ 29,90</span>
+      </div>
+      <p class="caneta" style="text-align:right;margin-top:6px">pronto em cerca de 1 minuto</p>
+    </div>
+    <p class="nota">Começa pelo quiz gratuito: o plano sai com as respostas dele. 7 dias de garantia.</p>
+  </div>
+  ${rodape}
+</div>`);
+
+const bolha = (texto, minha, hora) => `<div style="display:flex;justify-content:${minha ? "flex-end" : "flex-start"};margin-top:18px">
+  <div style="max-width:76%;background:${minha ? "#d9fdd3" : "#fff"};border-radius:${minha ? "26px 6px 26px 26px" : "6px 26px 26px 26px"};padding:20px 26px 14px;font-size:32px;line-height:1.32;box-shadow:0 2px 0 rgba(16,34,26,.12)">
+    ${texto}<span style="display:block;text-align:right;font-size:18px;color:#7a8a80;margin-top:6px">${hora}</span></div></div>`;
+
+peca("kit/criativos/12-conversa.png", 1080, 1350, `<div class="quadro">
+  <h1 class="titulo" style="font-size:80px">A conversa <span class="grifo">do dia 20</span></h1>
+  <div class="miolo" style="padding-top:24px">
+    <div style="background:#efe7dd;border-radius:30px;padding:26px 30px 34px;box-shadow:0 34px 70px -34px rgba(16,34,26,.4)">
+      <div style="display:flex;align-items:center;gap:18px;padding-bottom:14px;border-bottom:2px solid rgba(16,34,26,.1)">
+        <div style="width:58px;height:58px;border-radius:50%;background:#9fd0b4;display:grid;place-items:center;font-family:Bricolage;font-weight:800;font-size:28px">M</div>
+        <div><b style="font-size:30px">Mãe</b><p style="font-size:20px;color:#56645c">online</p></div>
+      </div>
+      ${bolha("Mãe, em que dia o dinheiro costuma acabar aí em casa?", true, "19:02")}
+      ${bolha("Lá pelo dia 20, filha. Depois é no cartão 😅", false, "19:04")}
+      ${bolha("Achei um quiz de 3 minutos que faz essa conta e mostra para onde vai cada real", true, "19:05")}
+      ${bolha("Manda o link que eu faço agora", false, "19:05")}
+    </div>
+    <p class="minusculo" style="margin-top:18px">Cena ilustrativa.</p>
+  </div>
+  ${rodape}
+</div>`);
+
+/* Kiwify: imagem do order bump (acompanhamento de 4 semanas por e-mail) */
+
+const emailSemana = (n, foco, i) => `<div style="width:calc(100% - 84px);background:#fff;border-radius:20px;padding:22px 26px;box-shadow:0 2px 0 var(--linha),0 22px 40px -28px rgba(16,34,26,.4);
+  transform:translateX(${i * 26}px) rotate(${i % 2 ? 0.6 : -0.6}deg);margin-top:${i ? 16 : 0}px">
+  <div style="display:flex;justify-content:space-between;font-size:19px;color:var(--grafite)"><span>Mês Inteiro</span><span>segunda, 8:00</span></div>
+  <p style="font-weight:800;font-size:26px;margin-top:6px">Semana ${n} do seu mês: ${SEMANA} para o dia a dia</p>
+  <p style="font-size:22px;color:var(--grafite);margin-top:4px">Foco da semana: ${foco}</p>
+</div>`;
+
+peca("kit/kiwify/bump-acompanhamento-1000x1000.png", 1000, 1000, `<div class="quadro" style="padding:62px 64px 56px">
+  <p class="sobre" style="font-size:24px">Junto com o plano</p>
+  <p class="titulo" style="font-size:64px">Acompanhamento de <span class="grifo">4 semanas</span></p>
+  <div class="miolo" style="padding:30px 0 20px">
+    ${[["1", "anotar tudo, sem julgar"], ["2", "o valor da semana no débito"], ["3", "cortar um vazamento"], ["4", "separar o futuro primeiro"]].map(([n, f], i) => emailSemana(n, f, i)).join("")}
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-end">
+    <p style="font-size:26px;color:var(--grafite);line-height:1.35">Toda segunda, um e-mail com o valor<br>da semana e o foco do desafio.</p>
+    ${marca(40)}
+  </div>
+</div>`);
+
 /* Kiwify: imagem do produto e banners do checkout */
 
 const cartaoPlano = (escala = 1) => `<div class="cartao inclinado" style="padding:${44 * escala}px;width:100%">
@@ -310,17 +283,17 @@ peca("app/apple-icon.png", 180, 180, `<div style="position:absolute;inset:0;back
     console.log(`✓ ${p.arquivo} (${p.largura}x${p.altura})`);
   }
 
-  // Folha com os 10 criativos lado a lado, para revisar de uma vez.
+  // Folha com os 12 criativos lado a lado, para revisar de uma vez.
   const criativos = pecas.filter((p) => p.arquivo.startsWith("kit/criativos/"));
   const folha = join(TMP, "todos.html");
-  writeFileSync(folha, `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;display:grid;grid-template-columns:repeat(5,360px);background:#fff}img{width:360px;height:450px;display:block}</style></head><body>${criativos
+  writeFileSync(folha, `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;display:grid;grid-template-columns:repeat(6,300px);background:#fff}img{width:300px;height:375px;display:block}</style></head><body>${criativos
     .map((p) => `<img src="${pathToFileURL(join(RAIZ, p.arquivo)).href}">`)
     .join("")}</body></html>`);
-  await pagina.setViewportSize({ width: 1800, height: 900 });
+  await pagina.setViewportSize({ width: 1800, height: 750 });
   await pagina.goto(pathToFileURL(folha).href);
   await pagina.waitForLoadState("load");
   await pagina.screenshot({ path: join(RAIZ, "kit/criativos/00-todos.png") });
-  console.log("✓ kit/criativos/00-todos.png (1800x900)");
+  console.log("✓ kit/criativos/00-todos.png (1800x750)");
 
   await navegador.close();
   rmSync(TMP, { recursive: true, force: true });

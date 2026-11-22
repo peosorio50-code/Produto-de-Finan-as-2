@@ -14,10 +14,13 @@ import {
   lerRascunho,
 } from "@/lib/armazenamento";
 import { emailPareceValido, telefoneValido } from "@/lib/contato";
-import { CATEGORIAS_DIA_A_DIA, CATEGORIAS_FIXAS, DIA_CONTADO, diaEmQueAcaba } from "@/lib/diagnostico";
+import { postar } from "@/lib/api";
+import { CATEGORIAS_DIA_A_DIA, CATEGORIAS_FIXAS, DIA_CONTADO, diaEmQueAcaba, diagnosticar } from "@/lib/diagnostico";
+import { contar } from "@/lib/eventos";
 import { mascaraTelefone } from "@/lib/formato";
 import { LIMITES } from "@/lib/limites";
 import { rastrear } from "@/lib/pixel";
+import { resumoParaServidor } from "@/lib/resumo";
 import {
   AJUDA_GASTO,
   FRASE_QUANDO_ACABA,
@@ -133,14 +136,13 @@ function paraRespostas(f: Formulario): Respostas {
   };
 }
 
-/** Avisa o servidor, que grava o lead. Falha em silêncio. */
+/**
+ * Avisa o servidor (api.mapadaalma.online/api/mesinteiro/lead), que grava o
+ * lead e, na conclusão, guarda o resultado para os e-mails. Falha em silêncio.
+ */
 function registrar(evento: "quiz_iniciado" | "quiz_concluido", contato: Contato, respostas?: Respostas) {
-  void fetch("/api/lead", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ evento, contato, origem: lerOrigem(), respostas }),
-    keepalive: true,
-  }).catch(() => {});
+  const resumo = respostas ? resumoParaServidor(respostas, diagnosticar(respostas)) : undefined;
+  void postar("/lead", { evento, contato, origem: lerOrigem(), respostas, resumo }, true).catch(() => {});
 }
 
 /* ---------- Telas ---------- */
@@ -397,6 +399,7 @@ export function Quiz() {
         gravarContato(contato);
         registrar("quiz_iniciado", contato);
         rastrear("Lead");
+        contar("QuizInicio");
       }
       setF((x) => ({ ...x, contato }));
     }
@@ -697,6 +700,7 @@ export function Quiz() {
 
 /** A conta feita até aqui: até que dia o dinheiro dura só pelos valores informados. */
 function TelaPrevia({ f, titulo }: { f: Formulario; titulo: React.RefObject<HTMLHeadingElement | null> }) {
+  useEffect(() => contar("Previa"), []);
   const fixos = CATEGORIAS_FIXAS.reduce((soma, c) => soma + f.gastos[c], 0);
   const diaADia = CATEGORIAS_DIA_A_DIA.reduce((soma, c) => soma + f.gastos[c], 0);
   const disponivel = f.rendaMensal - fixos - f.parcelas.cartao - f.parcelas.emprestimos;
